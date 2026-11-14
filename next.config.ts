@@ -29,6 +29,21 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
+  // HTTPS forcé : toute requête reçue en HTTP par l'hébergeur (en-tête x-forwarded-proto) est redirigée vers HTTPS (308).
+  // Complète l'en-tête HSTS (2 ans, préchargement) et la directive CSP upgrade-insecure-requests.
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          { type: 'header', key: 'x-forwarded-proto', value: 'http' },
+          { type: 'host', value: '(?<host>(?!localhost|127\\.0\\.0\\.1).+)' },
+        ],
+        destination: 'https://:host/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

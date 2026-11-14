@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db';
 import { messages, messageRecipients, parents, students, tutors, classes, assignments } from '@/db/schema';
@@ -174,6 +174,31 @@ export async function markAllRead(): Promise<ActionResult> {
     await db.update(messageRecipients).set({ readAt: new Date() }).where(and(eq(messageRecipients.userId, me.id), sql`${messageRecipients.readAt} is null`, isNotNull(messageRecipients.userId)));
     revalidatePath(me.role === 'PARENT' ? '/parent/messages' : '/encadreur/messages');
     return { ok: true, message: 'Tous les messages sont marqués comme lus.' };
+  });
+}
+
+/** Efface un message déjà lu de la boîte de réception de l'utilisateur (l'historique d'envoi de l'administration est conservé). */
+export async function deleteReadMessage(recipientId: number): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('PARENT', 'ENCADREUR');
+    const r = await db.update(messageRecipients).set({ deletedAt: new Date() })
+      .where(and(eq(messageRecipients.id, recipientId), eq(messageRecipients.userId, me.id), isNotNull(messageRecipients.readAt), isNull(messageRecipients.deletedAt)))
+      .returning({ id: messageRecipients.id });
+    if (!r.length) throw new UserError('Seuls les messages déjà lus peuvent être effacés.');
+    revalidatePath(me.role === 'PARENT' ? '/parent' : '/encadreur', 'layout');
+    return { ok: true, message: 'Message effacé.' };
+  });
+}
+
+/** Efface tous les messages lus de la boîte de réception de l'utilisateur. */
+export async function deleteAllReadMessages(): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('PARENT', 'ENCADREUR');
+    const r = await db.update(messageRecipients).set({ deletedAt: new Date() })
+      .where(and(eq(messageRecipients.userId, me.id), isNotNull(messageRecipients.readAt), isNull(messageRecipients.deletedAt)))
+      .returning({ id: messageRecipients.id });
+    revalidatePath(me.role === 'PARENT' ? '/parent' : '/encadreur', 'layout');
+    return { ok: true, message: r.length ? `${r.length} message(s) lu(s) effacé(s).` : 'Aucun message lu à effacer.' };
   });
 }
 

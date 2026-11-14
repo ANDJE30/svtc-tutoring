@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Logo, Motto, CircuitLines } from '@/components/brand';
 import { EnrollmentForm } from '@/components/client/enrollment-form';
+import { ManageCookiesButton } from '@/components/client/cookie-consent';
 import { publicSettings, logoUrl } from '@/lib/public-settings';
 import { formToken } from '@/lib/antispam';
 import { phoneFr, hm } from '@/lib/format';
@@ -188,6 +189,8 @@ export default async function Home() {
             <nav className="mt-4 flex flex-wrap gap-x-4 gap-y-2 md:justify-end" aria-label="Liens du pied de page">
               <Link href="/connexion" className="underline-offset-4 hover:text-white hover:underline">Espaces parents, encadreurs et administration</Link>
               <Link href="/confidentialite" className="underline-offset-4 hover:text-white hover:underline">Confidentialité et mentions légales</Link>
+              <Link href="/conditions" className="underline-offset-4 hover:text-white hover:underline">Conditions générales</Link>
+              <ManageCookiesButton className="underline-offset-4 hover:text-white hover:underline" />
               <Link href="/verifier" className="underline-offset-4 hover:text-white hover:underline">Vérifier un reçu</Link>
             </nav>
           </div>

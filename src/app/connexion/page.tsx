@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { ShieldCheck, BookOpenCheck, HeartHandshake, ArrowRight } from 'lucide-react';
 import { Logo, CircuitLines } from '@/components/brand';
+import { ManageCookiesButton } from '@/components/client/cookie-consent';
 
-export const metadata = { title: 'Connexion' };
+export const metadata = { title: 'Connexion', description: 'Accédez à votre espace SVTC Répétitions : parents, encadreurs ou administration du centre.', alternates: { canonical: '/connexion' } };
 
 const PORTALS = [
   { href: '/parent/connexion', icon: HeartHandshake, title: 'Je suis parent', text: 'Suivre la scolarité de mon enfant', cls: 'bg-gold-400 text-navy-950 hover:bg-gold-300' },
@@ -30,6 +31,11 @@ export default function ChoosePortal() {
             </Link>
           ))}
         </div>
+        <p className="mt-8 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-navy-200">
+          <Link href="/confidentialite" className="hover:text-white hover:underline">Confidentialité</Link>
+          <Link href="/conditions" className="hover:text-white hover:underline">Conditions générales</Link>
+          <ManageCookiesButton className="hover:text-white hover:underline" />
+        </p>
       </div>
     </main>
   );

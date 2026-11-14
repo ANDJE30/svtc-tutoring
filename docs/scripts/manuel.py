@@ -22,7 +22,7 @@ D.cover(
         ('Structure', 'SILICON VALLEY TRAINING CENTER — Centre Éducatif TYRANNUS, Biyem-Assi Lac, Yaoundé'),
         ('Public', 'Administration du centre, encadreurs, parents d’élèves'),
         ('Appareils', 'Ordinateur, tablette et smartphone (navigateur récent ou application installée)'),
-        ('Version', f'1.1 — {today}'),
+        ('Version', f'1.2 — {today}'),
         ('Assistance', '657 513 641 · 695 840 597 · 697 760 779'),
     ],
     motto="Comprendre. **Pratiquer.** Maîtriser.",
@@ -80,6 +80,14 @@ D.note("**Formulaire vérifié et protégé.** Les champs obligatoires et le for
 D.p("Une adresse erronée affiche une **page « introuvable »** aux couleurs du centre, avec un bouton de retour à l'accueil et les numéros du centre. "
     f"La page **{URL}/confidentialite** décrit l'usage des données personnelles, la mesure d'audience sans cookie et les droits des familles.")
 D.figures_row([c('06_page_404.png'), c('07_confidentialite.png')], 'Page « introuvable » (404) et page de confidentialité', width=7.4)
+D.h2('1.6 Cookies, confidentialité et conditions générales')
+D.p("À la première visite, un **bandeau** explique que le site n’utilise qu’un cookie de session (indispensable à la connexion) et propose d’**accepter** ou de **refuser** "
+    "la mesure d’audience anonyme. Les deux choix sont aussi simples l’un que l’autre ; tant que le visiteur n’a pas accepté, aucune visite n’est comptée. "
+    "Le choix est mémorisé sur l’appareil et peut être modifié à tout moment avec le lien **Gérer les cookies** en bas des pages publiques.")
+D.figures_row([c('08_mobile_bandeau_cookies.png'), c('07b_conditions.png')], 'Bandeau de consentement aux cookies et conditions générales d’utilisation', width=6.6)
+D.p(f"Les pages **{URL}/conditions** (conditions générales d’utilisation : comptes, inscription, frais et paiements, séances, bon usage, propriété intellectuelle, responsabilité) "
+    f"et **{URL}/confidentialite** sont accessibles depuis le pied de page, le choix de l’espace de connexion et le formulaire d’inscription. "
+    "Le site est toujours servi en **HTTPS** : une adresse saisie en « http:// » est automatiquement redirigée vers la version sécurisée.")
 
 # ------------------------------------------------------------------ 2
 D.h1('2. Administrateur — prise en main')
@@ -131,7 +139,7 @@ D.h2('3.1 Paramètres du centre')
 D.p("Menu **Paramètres du centre**. Chaque bloc s'enregistre séparément avec son bouton.")
 D.bullets([
     ('Identité : ', 'nom, sigle, devise, slogan, présentation, lieu, adresse, 3 téléphones, WhatsApp, e-mail, nom et titre du signataire des documents (ex. « Le Promoteur »).'),
-    ('Logo & bandeau : ', 'chargez un nouveau logo (PNG transparent conseillé, 1 Mo maximum) ou un bandeau d’en-tête pour les PDF ; « Logo d’origine » rétablit l’image SVTC.'),
+    ('Logo & bandeau : ', 'chargez un nouveau logo (PNG transparent conseillé) ou un bandeau d’en-tête pour les PDF, jusqu’à 4 Mo : l’image est **compressée automatiquement** (WebP léger pour le site, JPEG optimisé pour les PDF) ; « Logo d’origine » rétablit l’image SVTC.'),
     ('Jours, horaires et créneaux : ', 'cochez les jours de séance, saisissez début et fin, puis les créneaux séparés par « ; » (ex. 15:30-16:45 ; 16:45-18:00). Le planning automatique utilise ces créneaux.'),
     ('Facturation : ', 'préfixe des reçus, mois facturables (mensualités) et base de calcul de la location des salles.'),
     ('Salaires : ', 'mode « prorata des heures » (salaire de référence × % d’heures effectuées) ou « taux horaire » ; heures retenues ; plafond à 100 %.'),
@@ -196,8 +204,13 @@ D.steps([
     'Ajustez si besoin : bouton **+ Ajouter** dans une case, crayon pour modifier, corbeille pour supprimer. Tout chevauchement est refusé avec son explication.',
     'Bloc **1. Générer les séances datées** : choisissez la période (ex. le mois) ▸ **Générer les séances**. Ce sont ces séances que les encadreurs démarrent et que les parents consultent.',
     'Bloc **2. Exporter le planning (PDF)** : planning général, planning de travail d’une classe, ou séances du mois.',
-    'Bloc **3. Ajustements** : après une modification du planning, « Appliquer le planning aux séances futures » ; pour un jour férié, « Annuler une journée de séances ».',
+    'Bloc **3. Ajustements** : après une modification du planning, « Appliquer le planning aux séances futures » ; pour un jour férié, « Annuler une journée de séances » ; pour repartir de zéro, « Supprimer un planning ».',
 ])
+D.p("**Supprimer un planning.** Bloc 3 ▸ **Supprimer un planning** : choisissez **toutes les classes** ou **une classe**, puis ce qu’il faut effacer : "
+    "le **planning hebdomadaire** (créneaux de la grille) et/ou les **séances datées à venir** non commencées et sans appel, à partir d’une date. "
+    "Cochez « Je confirme la suppression » puis validez. Les séances commencées ou terminées, l’appel, les heures des encadreurs, les salaires et la location "
+    "déjà calculés sont **toujours conservés**. Générez ensuite un nouveau planning (automatiquement ou créneau par créneau).")
+D.figure(c('21b_admin_planning_supprimer.png'), 'Supprimer un planning : toutes les classes ou une classe, créneaux et séances à venir', max_h=9.5)
 D.figure(c('21_admin_planning.png'), 'Planning hebdomadaire par jour, créneau et salle', max_h=10.5)
 D.figures_row([c('pdf_planning.png'), c('pdf_planning_classe.png')], 'Planning général et planning de travail d’une classe (PDF)', width=8.0)
 D.h2('4.2 Séances et validation des heures')
@@ -306,7 +319,8 @@ D.p("Menu **Élèves** ▸ choisissez la classe puis l’élève : assiduité, m
 D.figure(c('44_encadreur_suivi_eleve.png'), 'Évolution d’un élève et envoi de l’état de suivi', max_h=10)
 D.h2('7.6 Mes heures et messages')
 D.p("**Mes heures** détaille chaque séance du mois (prévu, réalisé, retenu), le pourcentage d’heures faites et l’estimation du salaire (ou le montant payé). "
-    "**Messages** contient les informations envoyées par l’administration.")
+    "**Messages** contient les informations envoyées par l’administration. Une fois lus, les messages peuvent être **effacés** un par un (bouton « Effacer ») "
+    "ou tous ensemble (« Effacer les messages lus »).")
 D.figure(c('48_encadreur_heures.png'), 'Mes heures et ma rémunération', max_h=9.5)
 
 # ------------------------------------------------------------------ 8
@@ -318,11 +332,12 @@ D.bullets([
     ('Planning : ', 'emploi du temps hebdomadaire de la classe et liste des séances récentes et à venir ; planning PDF.'),
     ('Détail d’une séance : ', 'encadreur, horaire prévu, **heures de début et de fin effectives**, salle, présence de votre enfant, leçon, travail à faire et fiche de TD partagée.'),
     ('Suivi : ', 'assiduité, absences et retards, notes, moyennes par matière, graphique d’évolution ; **Télécharger l’état de suivi (PDF)**.'),
-    ('Messages : ', 'rappels, informations, états de suivi envoyés par le centre ou les encadreurs.'),
+    ('Messages : ', 'rappels, informations, états de suivi envoyés par le centre ou les encadreurs. « Tout marquer comme lu », puis **Effacer** un message lu ou **Effacer les messages lus** pour vider la boîte (une confirmation est demandée ; le centre garde son propre historique).'),
     ('Paiements : ', 'total payé, reste à payer, mois réglés, historique et **reçus PDF**.'),
 ])
 D.figures_row([c('60_mobile_parent_accueil.png'), c('61_mobile_parent_planning.png'), c('62_mobile_parent_seance.png')], 'Accueil, planning et détail d’une séance', width=4.7)
 D.figures_row([c('63_mobile_parent_suivi.png'), c('64_mobile_parent_messages.png'), c('65_mobile_parent_paiements.png')], 'Suivi, messages et paiements', width=4.7)
+D.figures_row([c('64b_mobile_parent_messages_lus.png'), c('pdf_recu.png')], 'Effacement des messages lus et reçu de paiement (PDF)', width=6.0)
 D.figure(c('pdf_suivi.png'), 'État de suivi de l’apprenant (PDF)', max_h=12)
 
 # ------------------------------------------------------------------ 9
@@ -388,7 +403,10 @@ D.table(['Question', 'Réponse'], [
     ['Les SMS ne partent pas.', 'Sans passerelle configurée, l’application est en mode simulation : utilisez les liens WhatsApp ou le SMS groupé proposés après l’envoi.'],
     ['Le fichier de TD est refusé.', 'Seuls les vrais PDF de 4 Mo maximum sont acceptés : réduisez sa taille (ex. ilovepdf.com) ou exportez-le à nouveau en PDF.'],
     ['Une demande d’inscription n’apparaît pas.', 'Vérifiez l’onglet « Toutes ». Les envois de robots sont ignorés volontairement ; un parent qui a envoyé plus de 5 demandes en une heure doit appeler le centre.'],
-    ['Mes propres visites ne sont pas comptées.', 'Les navigateurs réglés sur « Ne pas suivre » et les robots ne sont pas comptés ; chaque visiteur n’est compté qu’une fois par jour.'],
+    ['Mes propres visites ne sont pas comptées.', 'Seules les visites des personnes qui ont accepté la mesure d’audience sont comptées ; les navigateurs réglés sur « Ne pas suivre » et les robots sont exclus ; chaque visiteur n’est compté qu’une fois par jour.'],
+    ['Comment vider ma boîte de messages ?', 'Marquez les messages comme lus, puis « Effacer » sur un message ou « Effacer les messages lus » pour tous. Les messages non lus ne peuvent pas être effacés.'],
+    ['Comment changer mon choix sur les cookies ?', 'Cliquez sur « Gérer les cookies » en bas de la page d’accueil ou de la page de connexion, puis Accepter ou Refuser.'],
+    ['J’ai supprimé un planning par erreur.', 'Les séances réalisées et la paie sont intactes. Relancez « Générer automatiquement » puis « Générer les séances » pour la période voulue.'],
     ['Un parent a plusieurs enfants.', 'Inscrivez chaque enfant avec le même numéro de téléphone du parent : un seul compte parent, avec sélection de l’enfant.'],
 ], widths=[5.0, 11.6], caption='Questions fréquentes', font=8.6)
 

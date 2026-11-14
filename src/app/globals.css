@@ -89,7 +89,7 @@ body {
   .btn-gold { @apply bg-gold-400 text-navy-950 shadow-sm hover:bg-gold-300 active:translate-y-px; }
   .btn-ghost { @apply border border-navy-100 bg-white text-navy-800 hover:border-navy-200 hover:bg-navy-50; }
   .btn-soft { @apply bg-royal-50 text-royal-700 hover:bg-royal-100; }
-  .btn-danger { @apply bg-rose-600 text-white hover:bg-rose-700; }
+  .btn-danger { @apply bg-rose-700 text-white hover:bg-rose-800; }
   .btn-danger-soft { @apply bg-rose-50 text-rose-700 hover:bg-rose-100; }
   .btn-success { @apply bg-emerald-700 text-white hover:bg-emerald-800; }
   .btn-icon { @apply inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-navy-50 hover:text-navy-900; }

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/brand';
 
-export const metadata = { title: 'Vérifier un document' };
+export const metadata = { title: 'Vérifier un document', description: 'Vérifiez l’authenticité d’un reçu ou d’un état de suivi SVTC grâce à son code ou à son QR code.', robots: { index: false } };
 
 async function go(fd: FormData) {
   'use server';

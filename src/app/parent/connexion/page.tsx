@@ -6,7 +6,7 @@ import { LoginForm } from '@/components/client/login-form';
 import { Logo } from '@/components/brand';
 import { getSessionUser, PORTALS } from '@/lib/auth';
 
-export const metadata = { title: 'Espace parents — connexion' };
+export const metadata = { title: 'Espace parents — connexion', description: 'Connexion à l’espace parents : planning, séances, messages, état de suivi et reçus de votre enfant.', robots: { index: false } };
 
 export default async function ParentLogin({ searchParams }: { searchParams: Promise<{ erreur?: string }> }) {
   const u = await getSessionUser();

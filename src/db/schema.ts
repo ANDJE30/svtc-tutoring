@@ -372,6 +372,8 @@ export const messageRecipients = pgTable('message_recipients', {
   smsStatus: text('sms_status').notNull().default('NON_DEMANDE'), // NON_DEMANDE | ENVOYE | SIMULE | ECHEC
   smsError: text('sms_error'),
   readAt: timestamp('read_at', { withTimezone: true }),
+  // Effacé par le destinataire de sa boîte de réception (le message reste dans l'historique d'envoi de l'administration)
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: createdAt(),
 }, (t) => [index('recipients_parent_idx').on(t.parentId), index('recipients_user_idx').on(t.userId), index('recipients_msg_idx').on(t.messageId)]);
 

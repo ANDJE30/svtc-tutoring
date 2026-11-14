@@ -3,7 +3,7 @@ import { Logo } from '@/components/brand';
 import { adminExists } from '@/lib/bootstrap';
 import { InstallForm } from './form';
 
-export const metadata = { title: 'Installation' };
+export const metadata = { title: 'Installation', description: 'Première installation de SVTC Répétitions.', robots: { index: false } };
 
 export default async function Install() {
   if (await adminExists()) redirect('/admin/connexion');

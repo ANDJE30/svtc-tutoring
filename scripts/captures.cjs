@@ -23,7 +23,15 @@ async function shot(page, name, url, opts = {}) {
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).format(new Date());
 
 (async () => {
-  const browser = await chromium.launch();
+  // Interface de Chromium en français (format jj/mm/aaaa des champs de date)
+  const browser = await chromium.launch({ args: ['--lang=fr-FR'], env: { ...process.env, LANG: 'fr_FR.UTF-8', LC_ALL: 'fr_FR.UTF-8' } });
+  // Bandeau cookies déjà accepté pour les captures (sauf la capture dédiée au bandeau)
+  const freshContext = browser.newContext.bind(browser);
+  browser.newContext = async (o) => {
+    const c = await freshContext(o);
+    await c.addInitScript(() => { try { localStorage.setItem('svtc_consentement', 'accepte'); } catch {} });
+    return c;
+  };
   const FR = { locale: 'fr-FR', timezoneId: 'Africa/Douala' };
   const desk = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5, ...FR };
 
@@ -34,11 +42,17 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
   await shot(p, '01b_accueil_inscription', '/', { before: async (pg) => { await pg.locator('#inscription').scrollIntoViewIfNeeded(); await pg.evaluate(() => window.scrollBy(0, -10)); }, wait: 800 });
   await shot(p, '06_page_404', '/page-qui-n-existe-pas');
   await shot(p, '07_confidentialite', '/confidentialite');
+  await shot(p, '07b_conditions', '/conditions');
   await shot(p, '02_connexion_admin', '/admin/connexion');
   await shot(p, '03_connexion_encadreur', '/encadreur/connexion');
   const pubM = await browser.newContext({ ...devices['iPhone 13'], ...FR });
   const pm = await pubM.newPage();
   await shot(pm, '01c_mobile_accueil', '/');
+  {
+    const fresh = await (await freshContext({ ...devices['iPhone 13'], ...FR })).newPage();
+    await shot(fresh, '08_mobile_bandeau_cookies', '/', { before: async (pg) => pg.getByRole('dialog', { name: /Cookies/ }).waitFor(), wait: 600 });
+    await shot(fresh, '08b_bandeau_cookies_ordinateur', null, { before: async (pg) => { await pg.setViewportSize({ width: 1280, height: 800 }); }, wait: 600 });
+  }
   await shot(pm, '01d_mobile_formulaire', '/', { before: async (pg) => pg.locator('#inscription form').scrollIntoViewIfNeeded(), wait: 800 });
   await shot(pm, '04_mobile_choix_espace', '/connexion');
   await shot(pm, '05_mobile_connexion_parent', '/parent/connexion');
@@ -83,6 +97,7 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
   await shot(a, '19_admin_encadreurs', '/admin/encadreurs');
   await shot(a, '20_admin_attributions', '/admin/attributions');
   await shot(a, '21_admin_planning', '/admin/planning');
+  await shot(a, '21b_admin_planning_supprimer', '/admin/planning', { before: async (pg) => pg.getByRole('button', { name: 'Supprimer un planning' }).click(), wait: 700 });
   await shot(a, '22_admin_seances', '/admin/seances');
   await shot(a, '22b_admin_seances_a_valider', '/admin/seances?statut=AVALIDER');
   await shot(a, '23_admin_presences', '/admin/presences?classe=9');
@@ -143,6 +158,10 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
   await shot(pa, '62_mobile_parent_seance', ps);
   await shot(pa, '63_mobile_parent_suivi', '/parent/suivi');
   await shot(pa, '64_mobile_parent_messages', '/parent/messages');
+  await shot(pa, '64b_mobile_parent_messages_lus', '/parent/messages', { before: async (pg) => {
+    const all = pg.getByRole('button', { name: /Tout marquer comme lu/ });
+    if (await all.count()) { await all.click(); await pg.getByRole('button', { name: /Effacer les messages lus/ }).waitFor({ timeout: 15000 }); }
+  }, wait: 5000 });
   await shot(pa, '65_mobile_parent_paiements', '/parent/paiements');
   const pd = await (await browser.newContext(desk)).newPage();
   await login(pd, 'parent', '690000001', 'Demo@2026');

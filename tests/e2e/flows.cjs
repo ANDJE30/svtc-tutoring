@@ -4,6 +4,10 @@
  *   npx tsx --conditions=react-server scripts/seed-demo.ts --reset
  */
 const { chromium } = require('playwright');
+const { execFileSync } = require('child_process');
+const http = require('http');
+const os = require('os');
+const fs = require('fs');
 const path = require('path');
 const BASE = process.env.BASE || 'http://localhost:3100';
 const ADMIN = { user: process.env.ADMIN_USER || 'admin', pass: process.env.ADMIN_PASS || 'Admin@2026' };
@@ -39,6 +43,13 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
 
 (async () => {
   const browser = await chromium.launch();
+  // Choix du bandeau cookies déjà fait (« Accepter ») pour tous les contextes, sauf le test dédié au bandeau
+  const freshContext = browser.newContext.bind(browser);
+  browser.newContext = async (o) => {
+    const c = await freshContext(o);
+    await c.addInitScript(() => { try { localStorage.setItem('svtc_consentement', 'accepte'); } catch {} });
+    return c;
+  };
   const ctxA = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const admin = await ctxA.newPage();
   admin.on('dialog', (d) => d.accept());
@@ -108,6 +119,40 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
     assert(sm.ok() && /<urlset/.test(await sm.text()), 'sitemap.xml');
     const priv = await visitor.goto(`${BASE}/confidentialite`);
     assert(priv.ok(), 'confidentialité');
+  });
+  await step('conditions générales, favicon et liens légaux', async () => {
+    const c = await visitor.goto(`${BASE}/conditions`);
+    assert(c.ok() && /Conditions générales/.test(await visitor.locator('h1').innerText()), 'conditions');
+    assert((await visitor.request.get(`${BASE}/favicon.ico`)).ok(), 'favicon.ico');
+    await visitor.goto(`${BASE}/`);
+    for (const href of ['/confidentialite', '/conditions']) assert((await visitor.locator(`footer a[href="${href}"]`).count()) === 1, `lien ${href} absent du pied de page`);
+    assert(/\/conditions/.test(await (await visitor.request.get(`${BASE}/sitemap.xml`)).text()), 'conditions absentes du sitemap');
+  });
+  await step('HTTPS forcé : une requête HTTP est redirigée vers HTTPS', async () => {
+    const u = new URL(BASE);
+    const res = await new Promise((ok, ko) => http.get({ host: u.hostname, port: u.port, path: '/connexion?x=1', headers: { Host: 'svtc-test.example', 'X-Forwarded-Proto': 'http' } }, ok).on('error', ko));
+    res.resume();
+    assert(res.statusCode === 308 && res.headers.location === 'https://svtc-test.example/connexion?x=1', `statut ${res.statusCode} ${res.headers.location}`);
+  });
+  await step('bandeau cookies : refus mémorisé, aucune mesure d’audience, choix modifiable', async () => {
+    const ctx = await freshContext({ viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true });
+    const pg = await ctx.newPage();
+    let beacons = 0;
+    pg.on('request', (r) => { if (r.url().endsWith('/api/audience')) beacons++; });
+    await pg.goto(`${BASE}/`);
+    const banner = pg.getByRole('dialog', { name: /Cookies et mesure d’audience/ });
+    await banner.waitFor({ timeout: 15000 });
+    await banner.getByRole('button', { name: 'Refuser' }).click();
+    await banner.waitFor({ state: 'detached' });
+    await pg.reload();
+    await pg.waitForTimeout(1500);
+    assert(!(await pg.getByRole('dialog', { name: /Cookies/ }).count()), 'le bandeau réapparaît après un refus');
+    assert(beacons === 0, `mesure d’audience envoyée malgré le refus (${beacons})`);
+    await pg.locator('footer').getByRole('button', { name: 'Gérer les cookies' }).click();
+    await pg.getByRole('dialog', { name: /Cookies/ }).getByRole('button', { name: 'Accepter' }).click();
+    await pg.waitForTimeout(800);
+    assert(beacons === 1, `la visite doit être comptée après acceptation (${beacons})`);
+    await ctx.close();
   });
   await step('mesure d’audience : visite enregistrée sans cookie', async () => {
     const r = await visitor.request.post(`${BASE}/api/audience`, { data: JSON.stringify({ p: '/', r: 'https://www.facebook.com/' }), headers: { origin: BASE, 'content-type': 'text/plain', 'user-agent': UA } });
@@ -188,7 +233,16 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
     await toast(admin, /Paiement enregistré/);
     const href = await dlg.getByRole('link', { name: /Imprimer le reçu/ }).getAttribute('href');
     const r = await admin.request.get(BASE + href);
-    assert(r.status() === 200 && (await r.body()).subarray(0, 4).toString() === '%PDF', 'reçu PDF invalide');
+    const pdf = await r.body();
+    assert(r.status() === 200 && pdf.subarray(0, 4).toString() === '%PDF', 'reçu PDF invalide');
+    let text = null;
+    try {
+      const f = path.join(os.tmpdir(), `recu-${Date.now()}.pdf`);
+      fs.writeFileSync(f, pdf);
+      text = execFileSync('pdftotext', ['-layout', f, '-'], { encoding: 'utf8' });
+      fs.unlinkSync(f);
+    } catch {}
+    if (text !== null) assert(/Mode\s+Espèces/.test(text), `mode de paiement mal libellé sur le reçu : ${(text.match(/Mode.*$/m) || [''])[0]}`);
   });
   await step('ajout d’une séance du jour pour l’encadreur Paul NDJOCK', async () => {
     await admin.goto(`${BASE}/admin/seances`);
@@ -205,11 +259,14 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
     await toast(admin, /Séance ajoutée/);
   });
   await step('message aux parents d’une classe (personnalisé)', async () => {
-    await admin.goto(`${BASE}/admin/messages`);
-    await admin.getByText('Par classe', { exact: true }).click();
-    await admin.locator('label.chip').filter({ hasText: 'Seconde TI' }).click();
-    await admin.getByRole('button', { name: /Envoyer le message/ }).click();
-    await admin.getByText(/Message déposé dans l’espace de \d+ destinataire/).first().waitFor({ timeout: 20000 });
+    // Deux envois : la boîte du parent contiendra deux messages (utile au test d'effacement)
+    for (let i = 0; i < 2; i++) {
+      await admin.goto(`${BASE}/admin/messages`);
+      await admin.getByText('Par classe', { exact: true }).click();
+      await admin.locator('label.chip').filter({ hasText: 'Seconde TI' }).click();
+      await admin.getByRole('button', { name: /Envoyer le message/ }).click();
+      await admin.getByText(/Message déposé dans l’espace de \d+ destinataire/).first().waitFor({ timeout: 20000 });
+    }
     assert(await admin.getByRole('link', { name: /WhatsApp/ }).count() >= 1, 'lien WhatsApp absent');
   });
   await step('paiement des salaires d’octobre (au prorata des heures)', async () => {
@@ -320,6 +377,22 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
     await parent.getByRole('button', { name: /Tout marquer comme lu/ }).click();
     await toast(parent, /marqués comme lus/);
   });
+  await step('effacement d’un message lu puis de tous les messages lus', async () => {
+    parent.on('dialog', (d) => d.accept());
+    await parent.goto(`${BASE}/parent/messages`);
+    const before = await parent.locator('article').count();
+    assert(before >= 2, `au moins 2 messages attendus, ${before} trouvé(s)`);
+    await parent.locator('article').first().getByRole('button', { name: /Effacer ce message/ }).click();
+    await toast(parent, /Message effacé/);
+    await parent.waitForFunction((n) => document.querySelectorAll('article').length === n - 1, before, { timeout: 15000 });
+    await parent.getByRole('button', { name: /Effacer les messages lus/ }).click();
+    await toast(parent, /message\(s\) lu\(s\) effacé/);
+    await parent.getByText('Aucun message').waitFor({ timeout: 15000 });
+  });
+  await step('historique d’envoi de l’administration conservé après effacement', async () => {
+    await admin.goto(`${BASE}/admin/messages`);
+    assert(/Rappel de paiement/.test(await admin.locator('main').innerText()), 'message absent de l’historique');
+  });
   await step('état de suivi et reçu de son enfant (PDF)', async () => {
     await parent.goto(`${BASE}/parent/paiements`);
     const href = await parent.getByRole('link', { name: /Reçu/ }).first().getAttribute('href');
@@ -377,6 +450,21 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
   await step('accès anonyme refusé aux fichiers et PDF', async () => {
     assert((await intruder.request.get(`${BASE}/api/pdf/caisse`)).status() === 401, 'caisse');
     assert((await intruder.request.get(`${BASE}/api/export/eleves`)).status() === 403, 'export');
+  });
+
+  console.log('Administrateur (fin)');
+  await step('suppression d’un planning : créneaux et séances à venir, séances réalisées conservées', async () => {
+    await admin.goto(`${BASE}/admin/planning`);
+    await admin.getByRole('button', { name: 'Supprimer un planning' }).click();
+    const dlg = admin.locator('dialog[open]');
+    await dlg.locator('select[name=scope]').selectOption('TOUT');
+    await dlg.locator('input[name=confirm]').check();
+    await dlg.getByRole('button', { name: 'Supprimer le planning' }).click();
+    await toast(admin, /Planning de toutes les classes supprimé/);
+    await admin.goto(`${BASE}/admin/planning`);
+    assert(/· 0 créneau\(x\)/.test(await admin.locator('main').innerText()), 'des créneaux subsistent');
+    await admin.goto(`${BASE}/admin/seances?statut=TERMINEE`);
+    assert(/Terminée/.test(await admin.locator('main').innerText()), 'les séances réalisées doivent être conservées');
   });
 
   await browser.close();

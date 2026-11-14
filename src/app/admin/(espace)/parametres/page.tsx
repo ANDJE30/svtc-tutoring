@@ -63,7 +63,7 @@ export default async function SettingsPage() {
                   <SubmitButton className="btn btn-primary btn-sm">Changer le logo</SubmitButton>
                   {id.logoFileId && <ActionButton action={resetLogo.bind(null, 'logo')} className="btn btn-ghost btn-sm">Logo d&apos;origine</ActionButton>}
                 </ActionForm>
-                <p className="hint">PNG (fond transparent conseillé), JPEG ou WebP — 1 Mo maximum.</p>
+                <p className="hint">PNG (fond transparent conseillé), JPEG ou WebP — 4 Mo maximum, compressé automatiquement (WebP optimisé pour le site).</p>
               </div>
               <div>
                 <p className="label">Bandeau d&apos;en-tête des documents PDF</p>

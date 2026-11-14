@@ -10,7 +10,7 @@ import { audit } from '@/lib/audit';
 import { formObject, safe, UserError, zs, type ActionResult } from '@/lib/action';
 import { getCurrentYear, getSettings } from '@/lib/settings';
 import { findConflicts, generatePlanning } from '@/lib/calc';
-import { datesBetween, dayOfWeek, toMinutes, localToDate } from '@/lib/time';
+import { datesBetween, dayOfWeek, toMinutes, localToDate, todayISO } from '@/lib/time';
 import { refData, tutorName } from '@/lib/queries';
 import { deleteFile } from '@/lib/files';
 
@@ -95,6 +95,40 @@ export async function deleteTimeslot(id: number): Promise<ActionResult> {
     await audit(me, 'CRENEAU_SUPPRIME', { entity: 'creneau', entityId: id });
     refresh();
     return { ok: true, message: 'Créneau supprimé (les séances déjà générées sont conservées).' };
+  });
+}
+
+/**
+ * Supprime un planning : le planning hebdomadaire (créneaux) de toute la structure ou d'une classe, et/ou ses séances datées à venir non commencées.
+ * Les séances commencées ou terminées, l'appel, les heures des encadreurs et la paie ne sont jamais touchés.
+ */
+export async function deletePlanning(fd: FormData): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('ADMIN');
+    const f = formObject(fd);
+    if (f.confirm !== 'on') throw new UserError('Cochez la case de confirmation pour supprimer le planning.');
+    const withSlots = f.slots === 'on';
+    const withSeances = f.futures === 'on';
+    if (!withSlots && !withSeances) throw new UserError('Choisissez ce qu’il faut supprimer : le planning hebdomadaire et/ou les séances à venir.');
+    const classId = f.scope && f.scope !== 'TOUT' ? zs.id('Classe').parse(f.scope) : null;
+    const from = withSeances ? zs.date('À partir du').parse(f.from || todayISO()) : null;
+    const year = await getCurrentYear();
+    const { slots, futures } = await db.transaction(async (tx) => {
+      const slots = withSlots
+        ? await tx.delete(timeslots).where(and(eq(timeslots.academicYearId, year.id), classId ? eq(timeslots.classId, classId) : undefined)).returning({ id: timeslots.id })
+        : [];
+      const futures = withSeances && from
+        ? await tx.delete(seances).where(and(eq(seances.academicYearId, year.id), classId ? eq(seances.classId, classId) : undefined, gte(seances.date, from), eq(seances.status, 'PLANIFIEE'),
+            sql`not exists (select 1 from ${attendances} where ${attendances.seanceId} = ${seances.id})`)).returning({ id: seances.id })
+        : [];
+      return { slots, futures };
+    });
+    const ref = classId ? await refData() : null;
+    const label = classId ? `de la classe ${ref?.classById.get(classId)?.name ?? ''}`.trim() : 'de toutes les classes';
+    await audit(me, 'PLANNING_SUPPRIME', { details: { classe: classId ?? 'TOUT', creneaux: slots.length, seancesFutures: futures.length, depuis: from } });
+    refresh('/encadreur', '/parent');
+    const parts = [withSlots ? `${slots.length} créneau(x) hebdomadaire(s)` : null, withSeances ? `${futures.length} séance(s) à venir` : null].filter(Boolean).join(' et ');
+    return { ok: true, message: `Planning ${label} supprimé : ${parts}. Les séances réalisées sont conservées.` };
   });
 }
 

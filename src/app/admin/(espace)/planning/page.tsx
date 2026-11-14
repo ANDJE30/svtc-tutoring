@@ -10,7 +10,7 @@ import { DAYS } from '@/lib/constants';
 import { todayISO, periodBounds, currentPeriod, toMinutes } from '@/lib/time';
 import { Card, Dot, Empty, PageHeader, Badge } from '@/components/ui';
 import { ActionButton, ActionForm, Modal, SubmitButton } from '@/components/client/forms';
-import { autoGeneratePlanning, saveTimeslot, deleteTimeslot, generateSeances, syncFutureSeances, cancelDay } from '@/app/actions/pedagogy';
+import { autoGeneratePlanning, saveTimeslot, deleteTimeslot, generateSeances, syncFutureSeances, cancelDay, deletePlanning } from '@/app/actions/pedagogy';
 
 export const metadata = { title: 'Planning' };
 
@@ -70,6 +70,9 @@ export default async function PlanningPage() {
     );
   };
 
+  const slotsByClass = new Map<number, number>();
+  for (const t of list) slotsByClass.set(t.classId, (slotsByClass.get(t.classId) ?? 0) + 1);
+
   return (
     <div className="space-y-6">
       <PageHeader kicker="Pédagogie" title="Planning des séances" subtitle={`Planning hebdomadaire ${year.label} · ${list.length} créneau(x) · ${range?.n ?? 0} séance(s) datée(s)${range?.min ? ` du ${dateFr(range.min)} au ${dateFr(range.max)}` : ''}`}
@@ -105,7 +108,7 @@ export default async function PlanningPage() {
             </form>
           </div>
         </Card>
-        <Card title="3. Ajustements" subtitle="Après une modification du planning, ou un jour férié.">
+        <Card title="3. Ajustements" subtitle="Après une modification du planning, un jour férié, ou pour repartir de zéro.">
           <div className="space-y-2">
             <Modal title="Mettre à jour les séances futures" size="sm" trigger={<button className="btn btn-ghost w-full"><RefreshCw size={16} /> Appliquer le planning aux séances futures</button>}>
               <ActionForm action={syncFutureSeances} className="space-y-3">
@@ -119,6 +122,25 @@ export default async function PlanningPage() {
                 <label className="block"><span className="label">Date</span><input type="date" name="date" className="input" required /></label>
                 <label className="block"><span className="label">Motif</span><input name="reason" className="input" required placeholder="Ex. : Fête nationale du 20 mai" /></label>
                 <SubmitButton className="btn btn-danger">Annuler les séances</SubmitButton>
+              </ActionForm>
+            </Modal>
+            <Modal title="Supprimer un planning" subtitle="Planning hebdomadaire et/ou séances à venir, pour toutes les classes ou une seule" size="md" trigger={<button className="btn btn-ghost w-full text-rose-700 hover:border-rose-200 hover:bg-rose-50"><Trash2 size={16} /> Supprimer un planning</button>}>
+              <ActionForm action={deletePlanning} className="space-y-4">
+                <label className="block"><span className="label">Planning à supprimer</span>
+                  <select name="scope" className="input" defaultValue="TOUT">
+                    <option value="TOUT">Toutes les classes ({list.length} créneau(x))</option>
+                    {ref.classes.filter((c) => slotsByClass.get(c.id)).map((c) => <option key={c.id} value={c.id}>{c.name} ({slotsByClass.get(c.id)} créneau(x))</option>)}
+                  </select>
+                </label>
+                <fieldset className="space-y-2 rounded-xl border border-navy-100 p-3">
+                  <legend className="px-1 text-sm font-semibold text-navy-800">Éléments à supprimer</legend>
+                  <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="slots" defaultChecked className="check mt-0.5" /> <span>Le <strong>planning hebdomadaire</strong> (créneaux de la grille)</span></label>
+                  <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="futures" defaultChecked className="check mt-0.5" /> <span>Les <strong>séances datées à venir</strong> non commencées et sans appel</span></label>
+                  <label className="block pl-6"><span className="label">À partir du</span><input type="date" name="from" className="input" defaultValue={today} /></label>
+                </fieldset>
+                <p className="rounded-xl bg-navy-50/60 p-3 text-xs text-slate-600">Les séances commencées ou terminées, l&apos;appel, les heures des encadreurs, les salaires et la location déjà calculés sont <strong>toujours conservés</strong>. Vous pourrez ensuite régénérer un planning automatiquement ou créneau par créneau.</p>
+                <label className="flex items-start gap-2 text-sm font-medium text-rose-800"><input type="checkbox" name="confirm" required className="check mt-0.5" /> Je confirme la suppression de ce planning</label>
+                <SubmitButton className="btn btn-danger w-full"><Trash2 size={16} /> Supprimer le planning</SubmitButton>
               </ActionForm>
             </Modal>
           </div>

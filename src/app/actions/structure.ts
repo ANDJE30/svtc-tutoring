@@ -61,7 +61,7 @@ export async function uploadLogo(fd: FormData) {
   return safe(async () => {
     const me = await assertRole('ADMIN');
     const which = fd.get('which') === 'banner' ? 'bannerFileId' : 'logoFileId';
-    const id = await storeUpload(fd.get('file'), 'image', me.id);
+    const id = await storeUpload(fd.get('file'), 'image', me.id, which === 'logoFileId' ? 'web' : 'pdf');
     const s = await getSettings();
     const old = s.identity[which];
     await saveSettings({ identity: { ...s.identity, [which]: id } });

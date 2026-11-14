@@ -5,7 +5,7 @@ import { LoginForm } from '@/components/client/login-form';
 import { Logo } from '@/components/brand';
 import { getSessionUser, PORTALS } from '@/lib/auth';
 
-export const metadata = { title: 'Espace encadreur — connexion' };
+export const metadata = { title: 'Espace encadreur — connexion', description: 'Connexion à l’espace des encadreurs : séances, appel, fiches de TD, notes et suivi des élèves.', robots: { index: false } };
 
 export default async function TutorLogin({ searchParams }: { searchParams: Promise<{ erreur?: string }> }) {
   const u = await getSessionUser();

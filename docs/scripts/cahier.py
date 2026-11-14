@@ -22,7 +22,7 @@ D.cover(
         ('Maître d’ouvrage', 'SILICON VALLEY TRAINING CENTER (SVTC) — Centre Éducatif TYRANNUS, Biyem-Assi Lac, Yaoundé (Cameroun)'),
         ('Projet', 'SVTC Répétitions : planning, séances, présences, notes, suivi des élèves, paiements, caisse, location des salles, salaires et communication avec les parents'),
         ('Document', 'Cahier des charges : besoins, spécifications fonctionnelles et techniques, conception UML, sécurité, hébergement, recette'),
-        ('Version', '1.1 — application réalisée et testée, site public et liste de contrôle qualité intégrés'),
+        ('Version', '1.2 — mises à jour majeures : effacement des messages lus, suppression de planning, conformité web (CGU, cookies, HTTPS), base de données conservée'),
         ('Date', today),
         ('Adresse prévue', f'{URL} (hébergement Render, service « svtc-tutoring »)'),
         ('Rédaction', 'Équipe de développement full stack'),
@@ -126,6 +126,7 @@ EF = [
         ('EF-25', 'Documents pédagogiques', "Consultation en ligne des fiches de TD (PDF) déposées par les encadreurs, approbation, renvoi avec commentaire, partage aux parents.", 'M'),
         ('EF-26', 'Présences +', "Taux de présence par classe et par élève sur une période, état de présence PDF, prévenir le parent par WhatsApp.", 'S'),
         ('EF-27', 'Notes et classement +', "Moyennes par matière et générale, classement de la classe, envoi groupé des états de suivi aux parents.", 'S'),
+        ('EF-28', 'Supprimer un planning +', "Suppression du planning hebdomadaire de toutes les classes ou d'une classe, et/ou des séances datées à venir non commencées et sans appel à partir d'une date, avec confirmation ; les séances réalisées, l'appel, les heures et la paie sont conservés.", 'M'),
     ]),
     ('3.4 Administrateur — finances', [
         ('EF-30', 'Paiements des élèves', "Encaissement (espèces, MTN Mobile Money, Orange Money, virement), référence obligatoire pour le Mobile Money, numéro de reçu séquentiel, reçu PDF avec montant en lettres et QR code, annulation motivée et tracée.", 'M'),
@@ -165,6 +166,7 @@ EF = [
         ('EF-64', 'État de suivi PDF', "Assiduité, moyenne générale et par matière, détail des évaluations, absences et retards, appréciation, QR code d'authenticité.", 'M'),
         ('EF-65', 'Paiements +', "Total payé, reste à payer, mois réglés, historique et reçus PDF.", 'S'),
         ('EF-66', 'Plusieurs enfants +', "Sélecteur d'enfant pour les fratries.", 'S'),
+        ('EF-67', 'Effacer les messages lus +', "Parents et encadreurs : effacement d'un message déjà lu ou de tous les messages lus, avec confirmation ; les messages non lus ne peuvent pas être effacés ; l'historique d'envoi de l'administration reste complet.", 'M'),
     ]),
     ('3.8 Site public, acquisition et qualité web', [
         ('EF-70', 'Page d’accueil à appel à l’action unique +', "Présentation du centre (domaines, séances, atouts, contacts) et un seul bouton d'action « Inscrire mon enfant » qui mène au formulaire ; l'accès aux espaces privés reste un lien discret « Se connecter ».", 'M'),
@@ -174,7 +176,12 @@ EF = [
         ('EF-74', 'Traitement des demandes +', "Page « Demandes d'inscription » avec compteur sur le menu et alerte au tableau de bord ; appel ou WhatsApp en un clic, statut (nouvelle, contactée, inscrite, sans suite), note interne ; inscription de l'élève depuis la demande avec fiche préremplie et parent retrouvé par son numéro.", 'M'),
         ('EF-75', 'Mesure d’audience +', "Outil interne sans cookie ni service tiers : pages vues, visiteurs (empreinte anonyme renouvelée chaque jour), pages les plus consultées, appareils, provenance (Facebook, WhatsApp, Google…), taux de conversion en demandes ; respect de « Ne pas suivre » ; robots exclus ; purge après 400 jours.", 'S'),
         ('EF-76', 'Page 404 personnalisée et page d’incident +', "Page « introuvable » aux couleurs SVTC avec retour à l'accueil, connexion et numéros du centre ; page d'incident avec bouton « Réessayer ».", 'S'),
-        ('EF-77', 'Confidentialité et référencement +', "Page « Confidentialité et mentions légales » (loi n° 2024/017), plan du site sitemap.xml, robots.txt (espaces privés exclus), titres, descriptions et aperçus de partage (Open Graph) pour WhatsApp et Facebook.", 'S'),
+        ('EF-77', 'Confidentialité et référencement +', "Page « Confidentialité et mentions légales » (loi n° 2024/017), plan du site sitemap.xml, robots.txt (espaces privés exclus), titres et descriptions meta propres à chaque page, aperçus de partage (Open Graph) pour WhatsApp et Facebook.", 'M'),
+        ('EF-78', 'Conditions générales d’utilisation +', "Page /conditions : objet, comptes, inscription, frais et paiements, séances et suivi, bon usage, propriété intellectuelle, données et cookies, responsabilité, droit applicable ; liens en pied de page, à la connexion et dans le formulaire.", 'M'),
+        ('EF-79', 'Bandeau de consentement aux cookies +', "Information sur le seul cookie de session (strictement nécessaire) et choix Accepter / Refuser d'égale simplicité pour la mesure d'audience ; aucune visite comptée sans accord ; choix mémorisé sans cookie et modifiable (« Gérer les cookies »).", 'M'),
+        ('EF-80', 'HTTPS forcé +', "Redirection permanente (308) de toute requête HTTP vers HTTPS, en-tête HSTS de 2 ans avec préchargement, directive upgrade-insecure-requests.", 'M'),
+        ('EF-81', 'Favicon et icônes +', "favicon.ico multi-tailles (16 à 64 px), icône Apple et icônes de l'application installable.", 'S'),
+        ('EF-82', 'Compression des images chargées +', "Logo chargé par l'administration converti en WebP (960 px maximum), bandeau des PDF en JPEG optimisé (2400 px maximum) ; images jusqu'à 4 Mo acceptées puis réduites (ex. 1,4 Mo → 177 Ko).", 'S'),
     ]),
 ]
 for title, rows in EF:
@@ -202,6 +209,9 @@ D.table(['Réf.', 'Règle'], [
     ['RG-16', "Mot de passe généré : mot simple + symbole + 4 chiffres (ex. Baobab@4827). Il n'est affiché qu'**une seule fois** ; seule son empreinte chiffrée est conservée."],
     ['RG-17', "5 échecs de connexion consécutifs verrouillent le compte **15 minutes** ; au-delà de 10 tentatives par identifiant ou 30 par adresse IP en 15 minutes, les connexions sont suspendues."],
     ['RG-18', "Un encadreur qui a déjà assuré des séances n'est pas supprimé mais **désactivé** (sa paie reste calculable) ; une classe contenant des élèves est désactivée et non supprimée."],
+    ['RG-19', "Seuls les messages **déjà lus** peuvent être effacés par leur destinataire ; ils disparaissent de sa boîte de réception mais restent dans l'historique d'envoi de l'administration (nombre de destinataires et de lectures inchangé)."],
+    ['RG-20', "La suppression d'un planning n'efface jamais une séance commencée, terminée ou ayant fait l'objet d'un appel : les heures des encadreurs, les salaires et la location restent calculables."],
+    ['RG-21', "Une mise à jour de l'application conserve la base de données : seules des migrations additives sont appliquées automatiquement ; une migration qui supprimerait des données bloque la mise à jour."],
 ], widths=[1.4, 15.2], caption='Règles de gestion', font=8.6)
 D.figure(u('09_activite_salaires.png'), "Diagramme d'activité — calcul des salaires au pourcentage des heures faites", max_h=14)
 D.figure(u('10_etats_seance.png'), "Diagramme d'états — cycle de vie d'une séance", max_h=11)
@@ -227,7 +237,7 @@ D.table(['Table', 'Rôle'], [
     ['evaluations, grades', 'Évaluations (barème, coefficient) et notes'],
     ['documents, files', 'Fiches de TD et documents (métadonnées), fichiers binaires (PDF, images)'],
     ['payments, expenses, salary_slips, rent_settlements', 'Paiements, dépenses, bulletins de salaire, règlements de location'],
-    ['messages, message_recipients', 'Messages, destinataires personnalisés, statut SMS, lecture'],
+    ['messages, message_recipients', 'Messages, destinataires personnalisés, statut SMS, lecture, effacement par le destinataire'],
     ['audit_logs, verifications', 'Journal d’audit, codes de vérification des documents (QR)'],
     ['enrollment_requests, page_views', 'Demandes d’inscription du site public (statut, traitement), mesure d’audience anonyme'],
 ], widths=[6.0, 10.6], caption='Tables de la base de données (29 tables)')
@@ -260,7 +270,7 @@ D.table(['Domaine', 'Exigence', 'Réponse apportée'], [
     ['Maintenabilité', 'Évolution facile', 'TypeScript strict, architecture en couches, migrations SQL versionnées, code commenté, tests'],
     ['Accessibilité', 'Lisibilité (WCAG 2.1 AA)', 'Contrastes conformes (4,5:1 minimum), libellés de formulaires, navigation au clavier, attributs ARIA, réduction des animations respectée ; audit axe-core sans aucun défaut'],
 ], widths=[2.8, 4.6, 9.2], caption='Exigences non fonctionnelles', font=8.4)
-D.h2('6.1 Liste de contrôle qualité du site')
+D.h2('6.1 Listes de contrôle qualité du site')
 D.p("La liste de contrôle qualité fournie par le centre a été appliquée et **mesurée** sur la version de production (outils : Google Lighthouse en profil mobile 4G, axe-core, script d'exploration automatique des liens tests/e2e/qualite.cjs).")
 D.table(['N°', 'Point de contrôle', 'Réalisation', 'Mesure'], [
     ['11', 'Des images compressées', 'Images converties en WebP, logo décliné en 240, 320 et 480 px (srcset), dimensions déclarées, image d’aperçu 1200 × 630 compressée', 'Poids total de l’accueil : 322 Ko (logo 22 à 58 Ko au lieu de 119 Ko)'],
@@ -274,8 +284,22 @@ D.table(['N°', 'Point de contrôle', 'Réalisation', 'Mesure'], [
     ['19', 'Un outil de mesure d’audience', 'Audience du site intégrée, sans cookie (EF-75)', 'Visites, pages, appareils, provenance, conversion'],
     ['20', 'Un seul appel à l’action clair', '« Inscrire mon enfant » (EF-70)', 'Test automatique : un seul bouton d’action sur l’accueil'],
 ], widths=[0.9, 3.6, 7.1, 5.0], caption='Liste de contrôle qualité : réalisation et mesures', font=8.2)
-D.p("Scores Lighthouse (profil mobile, réseau 4G simulé) de la version de production : accueil 93 / 100 / 100 / 100, choix de l’espace 97 / 100 / 100 / 100, "
-    "confidentialité 98 / 100 / 100 / 100 (performance / accessibilité / bonnes pratiques / référencement). Les pages de connexion des espaces privés sont volontairement exclues des moteurs de recherche (balise noindex).")
+D.p("Une seconde liste de contrôle (points 1 à 11) a été appliquée dans la version 1.2 :")
+D.table(['N°', 'Point de contrôle', 'Réalisation', 'Mesure'], [
+    ['1', 'Page de politique de confidentialité', '/confidentialite : données, cookies et consentement, destinataires, durée, sécurité, droits (loi n° 2024/017), hébergement', 'Liens en pied de page, connexion, formulaire, conditions'],
+    ['2', 'Page de conditions générales', '/conditions (EF-78)', 'Dans le plan du site ; test automatique'],
+    ['3', 'Clés secrètes hors du front-end', 'Secrets lus côté serveur uniquement, modules « server-only », aucune variable publique', 'npm run test:secrets : 0 secret dans les fichiers envoyés au navigateur'],
+    ['4', 'HTTPS forcé', 'Redirection 308, HSTS 2 ans avec préchargement, upgrade-insecure-requests (EF-80)', 'Test automatique de la redirection ; Lighthouse « HTTPS » validé'],
+    ['5', 'Bandeau de consentement aux cookies', 'Accepter / Refuser, aucune mesure sans accord, choix modifiable (EF-79)', 'Test automatique : refus mémorisé, aucune visite envoyée'],
+    ['6', 'Titres et descriptions meta', 'Titre et description propres à chaque page publique, pages privées exclues de l’indexation', 'Lighthouse « meta description » validé sur toutes les pages publiques'],
+    ['7', 'Image d’aperçu pour les réseaux sociaux', 'Image Open Graph 1200 × 630 et carte Twitter', 'Aperçu WhatsApp et Facebook'],
+    ['8', 'Favicon', 'favicon.ico 16 à 64 px, icône Apple, icônes PWA (EF-81)', 'Test automatique (statut 200)'],
+    ['9', 'Sitemap et robots.txt', 'sitemap.xml (accueil, connexion, confidentialité, conditions), robots.txt excluant les espaces privés', 'Tests automatiques'],
+    ['10', 'Texte alternatif sur les images', 'Toutes les images informatives décrites, images décoratives masquées aux lecteurs d’écran', 'axe-core (image-alt) : 0 défaut sur 78 pages ; Lighthouse validé'],
+    ['11', 'Images compressées', 'WebP en plusieurs tailles + compression automatique des images chargées (EF-82)', 'Accueil 322 Ko au total ; logo chargé 1,4 Mo → 177 Ko'],
+], widths=[0.9, 3.6, 7.1, 5.0], caption='Liste de contrôle 1 à 11 : réalisation et mesures', font=8.2)
+D.p("Scores Lighthouse (profil mobile, réseau 4G simulé) de la version de production : accueil 94 / 100 / 100 / 100, choix de l’espace 93 / 100 / 100 / 100, "
+    "confidentialité 96 / 100 / 100 / 100, conditions générales 97 / 100 / 100 / 100 (performance / accessibilité / bonnes pratiques / référencement), bandeau cookies affiché. Les pages de connexion des espaces privés sont volontairement exclues des moteurs de recherche (balise noindex).")
 
 # ------------------------------------------------------------------ 7
 D.h1('7. Sécurité')
@@ -290,6 +314,8 @@ D.table(['Menace', 'Mesure mise en œuvre'], [
     ['Fichiers malveillants', 'Vérification de la **signature binaire** (vrai PDF %PDF-, vraies images PNG/JPEG/WebP), taille limitée, noms nettoyés, pas de SVG, téléchargement avec contrôle d’accès'],
     ['Détournement de cadre, sniffing', 'HSTS (2 ans), X-Frame-Options SAMEORIGIN, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, suppression de X-Powered-By'],
     ['Injection dans Excel', 'Neutralisation des formules dans les exports CSV'],
+    ['Fuite de clés secrètes', 'Clés (base de données, APP_SECRET, passerelles SMS) lues **uniquement côté serveur**, aucune variable NEXT_PUBLIC_ ; analyse automatique du code envoyé au navigateur (npm run test:secrets) : aucune clé trouvée'],
+    ['Interception (HTTP)', '**HTTPS forcé** : redirection 308 de toute requête HTTP, HSTS 2 ans avec préchargement, upgrade-insecure-requests'],
     ['Spam et robots sur le formulaire public', 'Champ piège invisible, **jeton horodaté signé (HMAC-SHA256)**, délai minimal de saisie, limitation à 5 demandes par heure et par IP, validation stricte, réponse identique pour ne pas renseigner les robots'],
     ['Traçage des visiteurs', 'Mesure d’audience **sans cookie** : empreinte à sens unique recalculée chaque jour (adresse IP jamais stockée), « Ne pas suivre » respecté, purge automatique'],
     ['Contrefaçon de reçus', '**QR code et code d’authenticité** vérifiables en ligne ; reçus annulés signalés comme tels'],
@@ -358,10 +384,12 @@ D.h1('10. Recette et tests')
 D.p("La recette s'appuie sur des tests automatisés exécutés avant chaque livraison, en développement et sur la version de production.")
 D.table(['Campagne', 'Contenu', 'Résultat'], [
     ['Tests unitaires (11)', 'Salaire au prorata et horaire, heures plafonnées, location mercredi/dimanche, montant dû et affectation des paiements, assiduité, moyenne pondérée, planning sans conflit, détection des conflits, montants en lettres, formats camerounais, fuseau horaire', '**11/11 réussis**'],
-    ['Tests de bout en bout (37)', 'Site public (smartphone) : un seul appel à l’action, validation du formulaire, robot ignoré, demande envoyée, page 404, robots.txt, sitemap, audience sans cookie. Administrateur : demande d’inscription transformée en élève, audience, paramètres, classe, inscription, compte parent, paiement et reçu, séance, message, salaires, location, document, caisse. Encadreur (smartphone) : démarrage, appel, fin, dépôt PDF et refus d’un faux PDF, notes (refus d’une note hors barème), envoi du suivi. Parent : connexion par téléphone, messages, reçu et suivi. Sécurité : cloisonnement des espaces, refus d’accès aux PDF d’autrui, verrouillage, mauvais espace, en-têtes, accès anonyme', '**37/37 réussis**'],
+    ['Tests de bout en bout (43)', 'Site public (smartphone) : un seul appel à l’action, validation du formulaire, robot ignoré, demande envoyée, page 404, robots.txt, sitemap, conditions générales, favicon, HTTPS forcé, bandeau cookies (refus respecté, choix modifiable), audience sans cookie. Messages : effacement d’un message lu puis de tous, historique admin conservé. Reçu : libellé « Espèces » vérifié dans le PDF. Planning : suppression totale, séances réalisées conservées. Administrateur : demande d’inscription transformée en élève, audience, paramètres, classe, inscription, compte parent, paiement et reçu, séance, message, salaires, location, document, caisse. Encadreur (smartphone) : démarrage, appel, fin, dépôt PDF et refus d’un faux PDF, notes (refus d’une note hors barème), envoi du suivi. Parent : connexion par téléphone, messages, reçu et suivi. Sécurité : cloisonnement des espaces, refus d’accès aux PDF d’autrui, verrouillage, mauvais espace, en-têtes, accès anonyme', '**43/43 réussis**'],
     ['Parcours complet des pages', 'Toutes les pages des trois espaces, sans erreur serveur ni erreur JavaScript', '**Aucune erreur**'],
-    ['Contrôle qualité automatisé', '77 pages et 28 ressources des quatre espaces : liens cassés, accessibilité WCAG 2.1 AA (axe-core), affichage à 360 px', '**0 défaut**'],
-    ['Performance (Lighthouse mobile)', 'Accueil, choix de l’espace, connexions, confidentialité', '**93 à 98 / 100**'],
+    ['Contrôle qualité automatisé', '78 pages et 28 ressources des quatre espaces : liens cassés, accessibilité WCAG 2.1 AA (axe-core, bandeau cookies compris), affichage à 360 px', '**0 défaut**'],
+    ['Performance (Lighthouse mobile)', 'Accueil, conditions, confidentialité, choix de l’espace (bandeau cookies affiché)', '**93 à 97 / 100**'],
+    ['Secrets dans le front-end', 'Analyse des fichiers envoyés au navigateur (valeurs des variables secrètes, adresses de base, clés)', '**Aucun secret**'],
+    ['Mise à jour sans perte de données', 'Construction Render complète sur une copie remplie et modifiée de la base, puis migration 0002 (ajout de colonne)', '**Données identiques**'],
     ['Build de production', 'Compilation TypeScript stricte et optimisation Next.js', '**Réussi**'],
 ], widths=[3.6, 10.6, 2.4], caption='Résultats de la recette', font=8.5)
 

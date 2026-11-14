@@ -6,7 +6,7 @@ import { Logo, CircuitLines } from '@/components/brand';
 import { getSessionUser, PORTALS } from '@/lib/auth';
 import { adminExists } from '@/lib/bootstrap';
 
-export const metadata = { title: 'Administration — connexion' };
+export const metadata = { title: 'Administration — connexion', description: 'Connexion sécurisée à la console d’administration de SVTC Répétitions.', robots: { index: false } };
 
 export default async function AdminLogin() {
   const u = await getSessionUser();

@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/brand';
 import { publicSettings, logoUrl } from '@/lib/public-settings';
 import { phoneFr } from '@/lib/format';
+import { ManageCookiesButton } from '@/components/client/cookie-consent';
 
 export const metadata = {
   title: 'Confidentialité et mentions légales',
@@ -10,9 +11,9 @@ export const metadata = {
   alternates: { canonical: '/confidentialite' },
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-10">
+    <section id={id} className="mt-10 scroll-mt-6">
       <h2 className="text-xl font-semibold text-navy-950">{title}</h2>
       <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-slate-700">{children}</div>
     </section>
@@ -44,9 +45,11 @@ export default async function PrivacyPage() {
           <p><strong>Comptes d&apos;accès</strong> (administration, encadreurs, parents) : identifiant, mot de passe chiffré (jamais conservé en clair), historique des connexions et des opérations sensibles pour la sécurité.</p>
         </Section>
 
-        <Section title="2. Mesure d'audience sans cookie">
-          <p>Le site mesure sa fréquentation avec un outil interne : page consultée, type d&apos;appareil et site d&apos;origine. Aucun cookie publicitaire ou de suivi n&apos;est déposé, aucune donnée n&apos;est transmise à un service tiers. Les visiteurs sont comptés par une empreinte anonyme recalculée chaque jour, qui ne permet pas de les reconnaître d&apos;un jour à l&apos;autre. Le réglage « Ne pas suivre » (Do Not Track) du navigateur est respecté. Les statistiques sont effacées après 400 jours.</p>
-          <p>Le seul cookie utilisé est le cookie de session, strictement nécessaire à la connexion aux espaces privés.</p>
+        <Section id="cookies" title="2. Cookies, mesure d'audience et consentement">
+          <p><strong>Cookie de session</strong> : un seul cookie est déposé, uniquement lorsque vous vous connectez à un espace privé (administration, encadreur, parent). Il est strictement nécessaire à la connexion, ne contient aucune donnée lisible et disparaît à la déconnexion ou à l&apos;expiration de la session. Il ne requiert pas de consentement.</p>
+          <p><strong>Mesure d&apos;audience</strong> : avec votre accord donné dans le bandeau « Cookies et mesure d&apos;audience », le site compte ses visites avec un outil interne : page consultée, type d&apos;appareil et site d&apos;origine. Aucun cookie publicitaire ou de suivi n&apos;est déposé et aucune donnée n&apos;est transmise à un service tiers. Les visiteurs sont comptés par une empreinte anonyme recalculée chaque jour, qui ne permet pas de les reconnaître d&apos;un jour à l&apos;autre ; l&apos;adresse IP n&apos;est jamais enregistrée. Si vous refusez, ou si votre navigateur demande « Ne pas me pister », aucune visite n&apos;est comptée. Les statistiques sont effacées après 400 jours.</p>
+          <p>Votre choix est conservé dans votre navigateur (sans cookie). Vous pouvez le modifier à tout moment :</p>
+          <ManageCookiesButton className="btn btn-ghost btn-sm" label="Modifier mon choix (gérer les cookies)" />
         </Section>
 
         <Section title="3. Destinataires et durée de conservation">
@@ -66,7 +69,10 @@ export default async function PrivacyPage() {
         </Section>
 
         <p className="mt-12 text-sm text-slate-500">Dernière mise à jour : novembre 2026.</p>
-        <Link href="/#inscription" className="btn btn-primary mt-6">Retour au formulaire d&apos;inscription</Link>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/#inscription" className="btn btn-primary">Retour au formulaire d&apos;inscription</Link>
+          <Link href="/conditions" className="btn btn-ghost">Conditions générales d&apos;utilisation</Link>
+        </div>
       </article>
     </main>
   );

@@ -1,18 +1,28 @@
-import { CheckCheck, FileDown, MailOpen, Mail } from 'lucide-react';
+import { CheckCheck, FileDown, MailOpen, Mail, Trash2 } from 'lucide-react';
 import { dateTimeFr } from '@/lib/format';
 import { MESSAGE_CATEGORIES } from '@/lib/constants';
 import { Badge, Empty } from '@/components/ui';
 import { ActionButton } from '@/components/client/forms';
-import { markRead, markAllRead } from '@/app/actions/messaging';
+import { markRead, markAllRead, deleteReadMessage, deleteAllReadMessages } from '@/app/actions/messaging';
 
 export type InboxItem = { id: number; readAt: Date | null; body: string; createdAt: Date; subject: string; category: string; senderName: string; attachmentKind: string | null; attachmentRef: string | null };
 
 export function Inbox({ items, accent = 'royal' }: { items: InboxItem[]; accent?: 'royal' | 'gold' }) {
   const unread = items.filter((i) => !i.readAt).length;
-  if (items.length === 0) return <div className="card"><Empty icon={<Mail />} title="Aucun message" text="Les messages du centre apparaîtront ici." /></div>;
+  const read = items.length - unread;
+  if (items.length === 0) return <div className="card"><Empty icon={<Mail />} title="Aucun message" text="Les messages du centre apparaîtront ici. Les messages lus que vous avez effacés n'y figurent plus." /></div>;
   return (
     <div className="space-y-3">
-      {unread > 0 && <div className="flex justify-end"><ActionButton action={markAllRead} className="btn btn-ghost btn-sm"><CheckCheck size={15} /> Tout marquer comme lu</ActionButton></div>}
+      {(unread > 0 || read > 0) && (
+        <div className="flex flex-wrap justify-end gap-2">
+          {unread > 0 && <ActionButton action={markAllRead} className="btn btn-ghost btn-sm"><CheckCheck size={15} aria-hidden /> Tout marquer comme lu</ActionButton>}
+          {read > 0 && (
+            <ActionButton action={deleteAllReadMessages} confirm={`Effacer définitivement les ${read} message(s) lu(s) de votre boîte de réception ?`} className="btn btn-ghost btn-sm text-rose-700 hover:border-rose-200 hover:bg-rose-50">
+              <Trash2 size={15} aria-hidden /> Effacer les messages lus ({read})
+            </ActionButton>
+          )}
+        </div>
+      )}
       {items.map((m) => {
         const cat = MESSAGE_CATEGORIES[m.category as keyof typeof MESSAGE_CATEGORIES] ?? MESSAGE_CATEGORIES.INFO;
         return (
@@ -28,6 +38,11 @@ export function Inbox({ items, accent = 'royal' }: { items: InboxItem[]; accent?
             <div className="mt-3 flex flex-wrap gap-2">
               {m.attachmentKind === 'SUIVI' && m.attachmentRef && <a href={`/api/pdf/suivi/${m.attachmentRef}`} target="_blank" className="btn btn-gold btn-sm"><FileDown size={15} /> État de suivi (PDF)</a>}
               {!m.readAt && <ActionButton action={markRead.bind(null, m.id)} className="btn btn-ghost btn-sm">Marquer comme lu</ActionButton>}
+              {m.readAt && (
+                <ActionButton action={deleteReadMessage.bind(null, m.id)} confirm="Effacer ce message de votre boîte de réception ?" title="Effacer ce message" className="btn btn-ghost btn-sm ml-auto text-rose-700 hover:border-rose-200 hover:bg-rose-50">
+                  <Trash2 size={15} aria-hidden /> Effacer
+                </ActionButton>
+              )}
             </div>
           </article>
         );

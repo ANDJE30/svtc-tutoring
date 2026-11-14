@@ -6,10 +6,10 @@ Application web responsive de gestion des **cours de répétitions en informatiq
 
 | Espace | Adresse | Style | Fonctions principales |
 |---|---|---|---|
-| **Administration** | `/admin` | Console bleu nuit et or, menu latéral, palette de commandes `Ctrl + K` | Paramètres du centre (nom, logo, bandeau PDF, horaires), classes, matières, salles et tarifs, élèves et parents (import Excel/CSV), encadreurs et comptes d'accès, attributions, **planning automatique sans conflit** et PDF, séances et validation des heures, présences, notes, documents pédagogiques, paiements et reçus (QR code), impayés et relances, dépenses, **état de caisse PDF**, **location des salles PDF**, **salaires au prorata des heures PDF**, messages aux parents (application, SMS, WhatsApp), comptes, journal d'audit, sauvegardes |
-| **Encadreur** | `/encadreur` | Espace de travail bleu roi, barre d'onglets mobile | Séances du jour (démarrer / terminer, chronomètre), appel tactile, contenu de séance, dépôt des fiches de TD (PDF), évaluations et notes, progression des élèves et **état de suivi PDF**, envoi du suivi au parent, heures et estimation de salaire, messages |
-| **Parent** | `/parent` | Application familiale claire et dorée | Planning de l'enfant, détail des séances (encadreur, heures de début et de fin, contenu, travail à faire), messages, **état de suivi PDF**, notes et assiduité, paiements et reçus |
-| **Site public** | `/` | Vitrine SVTC, un seul appel à l'action | « **Inscrire mon enfant** » : demande d'inscription en ligne validée et protégée contre le spam, traitée dans l'administration (demandes, inscription en un clic) ; **mesure d'audience sans cookie** ; page 404 personnalisée ; confidentialité ; sitemap, robots.txt, aperçus de partage |
+| **Administration** | `/admin` | Console bleu nuit et or, menu latéral, palette de commandes `Ctrl + K` | Paramètres du centre (nom, logo, bandeau PDF, horaires), classes, matières, salles et tarifs, élèves et parents (import Excel/CSV), encadreurs et comptes d'accès, attributions, **planning automatique sans conflit**, PDF et **suppression de planning**, séances et validation des heures, présences, notes, documents pédagogiques, paiements et reçus (QR code), impayés et relances, dépenses, **état de caisse PDF**, **location des salles PDF**, **salaires au prorata des heures PDF**, messages aux parents (application, SMS, WhatsApp), comptes, journal d'audit, sauvegardes |
+| **Encadreur** | `/encadreur` | Espace de travail bleu roi, barre d'onglets mobile | Séances du jour (démarrer / terminer, chronomètre), appel tactile, contenu de séance, dépôt des fiches de TD (PDF), évaluations et notes, progression des élèves et **état de suivi PDF**, envoi du suivi au parent, heures et estimation de salaire, messages (effacement des messages lus) |
+| **Parent** | `/parent` | Application familiale claire et dorée | Planning de l'enfant, détail des séances (encadreur, heures de début et de fin, contenu, travail à faire), messages, **état de suivi PDF**, notes et assiduité, paiements et reçus, **effacement des messages lus** |
+| **Site public** | `/` | Vitrine SVTC, un seul appel à l'action | « **Inscrire mon enfant** » : demande d'inscription en ligne validée et protégée contre le spam, traitée dans l'administration (demandes, inscription en un clic) ; **mesure d'audience sans cookie** ; page 404 personnalisée ; **confidentialité** et **conditions générales** ; **bandeau de consentement aux cookies** ; HTTPS forcé ; sitemap, robots.txt, favicon, aperçus de partage |
 
 Les trois interfaces de connexion sont distinctes (`/admin/connexion`, `/encadreur/connexion`, `/parent/connexion`) et chaque compte n'ouvre que son propre espace.
 
@@ -53,11 +53,28 @@ npm run seed:demo -- --reset
 
 ```bash
 npm test              # 11 tests unitaires : salaires, location, soldes, planning, montants en lettres, dates
-npm run test:e2e      # 37 tests de bout en bout (Playwright) : site public, admin, encadreur, parent et sécurité
+npm run test:e2e      # 43 tests de bout en bout (Playwright) : site public, admin, encadreur, parent et sécurité
 npm run test:qualite  # liens cassés, accessibilité WCAG 2.1 AA (axe-core) et affichage à 360 px sur toutes les pages
+npm run test:secrets  # aucune clé secrète dans le code envoyé au navigateur (après npm run build)
 ```
 
-### Liste de contrôle qualité (mesurée sur la version de production)
+### Liste de contrôle 1 à 11 (version 1.2)
+
+| N° | Point | Réalisation |
+|---|---|---|
+| 1 | Politique de confidentialité | `/confidentialite` (données, cookies et consentement, droits, loi n° 2024/017) |
+| 2 | Conditions générales | `/conditions` |
+| 3 | Clés secrètes hors du front-end | Secrets lus côté serveur uniquement ; `npm run test:secrets` : 0 secret exposé |
+| 4 | HTTPS forcé | Redirection 308 (`next.config.ts`), HSTS 2 ans + preload, `upgrade-insecure-requests` |
+| 5 | Bandeau de consentement aux cookies | Accepter / Refuser, aucune mesure d'audience sans accord, « Gérer les cookies » |
+| 6 | Titres et descriptions meta | Propres à chaque page publique (Lighthouse SEO 100) |
+| 7 | Image d'aperçu réseaux sociaux | Open Graph 1200 × 630 + carte Twitter |
+| 8 | Favicon | `src/app/favicon.ico` (16 à 64 px) + icônes Apple/PWA |
+| 9 | Sitemap et robots.txt | `src/app/sitemap.ts`, `src/app/robots.ts` |
+| 10 | Texte alternatif | axe-core `image-alt` : 0 défaut sur 78 pages |
+| 11 | Images compressées | WebP responsives + compression automatique des logos/bandeaux chargés (1,4 Mo → 177 Ko) |
+
+### Liste de contrôle 11 à 20 (mesurée sur la version de production)
 
 | N° | Point | Résultat |
 |---|---|---|

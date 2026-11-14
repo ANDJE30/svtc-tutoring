@@ -5,7 +5,8 @@ flowchart LR
     direction TB
     V1("Découvrir le centre<br/>domaines, séances, atouts")
     V2("Inscrire mon enfant<br/>appel à l'action unique")
-    V4("Lire la politique de confidentialité")
+    V4("Lire la confidentialité<br/>et les conditions générales")
+    V7("Accepter ou refuser<br/>la mesure d'audience")
     V5("Se connecter à son espace")
     V3("Contrôles anti-spam<br/>champ piège, jeton signé,<br/>délai minimal, limite par IP")
     V6("Mesure d'audience<br/>sans cookie")
@@ -17,10 +18,10 @@ flowchart LR
     A3("Analyser l'audience<br/>visites, pages, appareils, provenance")
   end
   A(["👤 Administrateur"])
-  V --- V1 & V2 & V4 & V5
+  V --- V1 & V2 & V4 & V5 & V7
+  V7 -. "conditionne" .-> V6
   R -. "rejeté" .-> V3
   V2 -. "«include»" .-> V3
-  V1 -. "«include»" .-> V6
   A1 --- A
   A2 --- A
   A3 --- A

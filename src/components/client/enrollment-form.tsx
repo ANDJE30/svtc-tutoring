@@ -46,7 +46,7 @@ export function EnrollmentForm({ token, classes, whatsapp }: { token: string; cl
         <textarea name="message" maxLength={600} rows={3} className="input" placeholder="Ex. : préparation au Probatoire, difficultés en algorithmique…" /></label>
       <label className="flex items-start gap-3 text-sm text-slate-700 sm:col-span-2">
         <input type="checkbox" name="consent" required className="check mt-0.5" />
-        <span>J&apos;accepte que la SVTC utilise ces informations pour me recontacter au sujet de l&apos;inscription (voir la <a href="/confidentialite" className="font-medium text-royal-700 underline">politique de confidentialité</a>).</span>
+        <span>J&apos;accepte que la SVTC utilise ces informations pour me recontacter au sujet de l&apos;inscription, conformément à la <a href="/confidentialite" className="font-medium text-royal-700 underline">politique de confidentialité</a> et aux <a href="/conditions" className="font-medium text-royal-700 underline">conditions générales</a>.</span>
       </label>
       <div className="sm:col-span-2">
         <SubmitButton className="btn btn-gold w-full py-3.5 text-base" pendingText="Envoi en cours…"><Send size={18} aria-hidden /> Envoyer ma demande d&apos;inscription</SubmitButton>

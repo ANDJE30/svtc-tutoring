@@ -4,9 +4,10 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { files } from '@/db/schema';
 import { UserError } from './action';
+import { optimizeImage } from './image-compress';
 
 export const MAX_PDF_BYTES = 4 * 1024 * 1024; // limite des fonctions serverless (4,5 Mo par requête)
-export const MAX_IMAGE_BYTES = 1024 * 1024;
+export const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // compressée automatiquement à l'enregistrement
 
 const IMAGE_SIGNATURES: { mime: string; test: (b: Buffer) => boolean }[] = [
   { mime: 'image/png', test: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
@@ -26,9 +27,9 @@ function safeName(name: string, ext: string) {
 }
 
 /** Vérifie la signature binaire (et non seulement l'extension) puis enregistre le fichier. */
-export async function storeUpload(file: unknown, kind: 'pdf' | 'image', userId: string | null): Promise<string> {
+export async function storeUpload(file: unknown, kind: 'pdf' | 'image', userId: string | null, optimize?: 'web' | 'pdf'): Promise<string> {
   if (!(file instanceof File) || file.size === 0) throw new UserError('Aucun fichier sélectionné.');
-  const buf = Buffer.from(await file.arrayBuffer());
+  let buf: Buffer = Buffer.from(await file.arrayBuffer());
   let mime: string;
   let ext: string;
   if (kind === 'pdf') {
@@ -37,10 +38,11 @@ export async function storeUpload(file: unknown, kind: 'pdf' | 'image', userId: 
     mime = 'application/pdf';
     ext = 'pdf';
   } else {
-    if (buf.length > MAX_IMAGE_BYTES) throw new UserError("L'image dépasse 1 Mo.");
+    if (buf.length > MAX_IMAGE_BYTES) throw new UserError("L'image dépasse 4 Mo.");
     const sig = IMAGE_SIGNATURES.find((s) => s.test(buf));
     if (!sig) throw new UserError('Format d’image non accepté (PNG, JPEG ou WebP).');
     mime = sig.mime;
+    if (optimize) ({ buf, mime } = await optimizeImage(buf, mime, optimize));
     ext = mime.split('/')[1].replace('jpeg', 'jpg');
   }
   const sha256 = createHash('sha256').update(buf).digest('hex');
