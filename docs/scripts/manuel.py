@@ -354,7 +354,21 @@ D.table(['Variable', 'Rôle'], [
     ['APP_SECRET', 'Clé secrète du formulaire anti-spam et de la mesure d’audience (générée automatiquement)'],
     ['SMS_PROVIDER + clés', 'ORANGE, TWILIO ou AFRICASTALKING et leurs identifiants (facultatif)'],
 ], widths=[5.0, 11.6], caption='Variables d’environnement (Render ▸ service svtc-tutoring ▸ Environment)')
-D.h2('10.3 Bonnes pratiques')
+D.h2('10.3 Mettre à jour l’application sans perdre les données')
+D.p("Les mises à jour du site **conservent toutes les données** enregistrées par le centre : paramètres, logo, classes, élèves, parents, encadreurs, "
+    "séances, présences, notes, paiements, dépenses, messages, comptes et mots de passe. Le code et la base de données sont séparés : seule l’application est remplacée.")
+D.steps([
+    'Avant une mise à jour importante, téléchargez la **sauvegarde** (Administration ▸ Sauvegarde & export) et conservez-la.',
+    'Les modifications du code sont publiées sur la branche GitHub suivie par le service Render : la mise à jour démarre **automatiquement** (5 à 10 minutes).',
+    'Pendant la construction, seules les **nouveautés** de la base sont ajoutées (nouvelles tables ou colonnes). Une mise à jour qui supprimerait des données est **refusée automatiquement** : la version en ligne reste alors inchangée.',
+    'À la fin, le site redémarre sur la **même base** : connectez-vous et vérifiez le tableau de bord. En cas de problème, **Rollback** (onglet Events du service Render) remet la version précédente.',
+])
+D.note("**À ne jamais faire sur le site en production :** créer un nouveau Blueprint, supprimer puis recréer le service ou la base, modifier DATABASE_URL, "
+       "ou lancer le jeu de démonstration (il est désormais bloqué sur une base distante). Ces opérations créeraient une base vide ou effaceraient les données.", 'warn')
+D.note("**Base gratuite Render : 30 jours.** Pour conserver les données au-delà, ouvrez la base **svtc-tutoring-db** dans Render et changez son offre "
+       "(Free ▸ Basic) **avant l’échéance** : les données sont conservées telles quelles, sans autre manipulation.", 'info')
+
+D.h2('10.4 Bonnes pratiques')
 D.bullets([
     'Changez le mot de passe administrateur après la première connexion et ne le partagez pas ; créez un compte par personne (secrétariat).',
     'Validez les séances chaque semaine et éditez l’état des salaires au début de chaque mois.',

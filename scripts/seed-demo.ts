@@ -38,7 +38,23 @@ const PLAN: Record<string, [string, number, number][]> = {
 };
 const COUNTS: Record<string, number> = { '6E': 5, '5E': 5, '4E': 6, '3E': 8, '2NDE': 7, '1ERE': 6, TLE: 8, PTI: 9, TTI: 10 };
 
+/** Protection des données réelles : le jeu de démonstration ne s'installe que sur une base locale, sauf confirmation explicite. */
+function guardProductionDatabase() {
+  const raw = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
+  let host = '';
+  try {
+    host = new URL(raw).hostname;
+  } catch {}
+  const local = ['localhost', '127.0.0.1', '::1'].includes(host) || (host !== '' && !host.includes('.'));
+  if (!local && !process.argv.includes('--base-distante-de-test')) {
+    console.error(`[seed] Refusé : la base « ${host || 'inconnue'} » n'est pas locale. Le jeu de démonstration ${process.argv.includes('--reset') ? 'EFFACERAIT' : 'mélangerait des données fictives avec'} les données réelles.`);
+    console.error("[seed] Pour une base distante de test uniquement, ajoutez l'option --base-distante-de-test.");
+    process.exit(1);
+  }
+}
+
 async function main() {
+  guardProductionDatabase();
   if (process.argv.includes('--reset')) {
     await db.execute(sql`truncate ${t.messageRecipients}, ${t.messages}, ${t.grades}, ${t.evaluations}, ${t.attendances}, ${t.documents}, ${t.seances}, ${t.timeslots}, ${t.assignments}, ${t.payments}, ${t.salarySlips}, ${t.rentSettlements}, ${t.expenses}, ${t.students}, ${t.parents}, ${t.tutors}, ${t.verifications}, ${t.auditLogs}, ${t.authSessions}, ${t.rateLimits}, ${t.enrollmentRequests}, ${t.pageViews}, ${t.classes}, ${t.subjects}, ${t.rooms}, ${t.settings} restart identity cascade`);
     await db.delete(t.users).where(sql`${t.users.role} <> 'ADMIN'`);

@@ -320,10 +320,15 @@ D.p(f"L'application est publiée sur **Render** sous le nom de service **svtc-tu
     "et génère automatiquement la clé secrète APP_SECRET. La construction est réglée pour tenir dans les 512 Mo de l'offre gratuite. Le centre saisit seulement ADMIN_PASSWORD "
     "(bouton « Deploy to Render » du README, ou New ▸ Blueprint). Les migrations de la base s'exécutent à chaque déploiement et le compte administrateur initial est créé au premier démarrage.")
 D.note("**Point de vigilance.** La base PostgreSQL gratuite de Render expire **30 jours** après sa création. Avant l'échéance, passez-la à l'offre Basic, ou remplacez DATABASE_URL par une base **Neon** gratuite et permanente : aucune modification du code n'est nécessaire.", 'warn')
+D.p("**Mises à jour sans perte de données.** Chaque publication sur la branche suivie reconstruit l'application sur la **même base** : les migrations versionnées "
+    "n'ajoutent que les nouveautés, une migration qui supprimerait des données (DROP, TRUNCATE, DELETE) bloque la construction et laisse la version en ligne intacte, "
+    "l'initialisation n'écrit les valeurs par défaut que si elles sont absentes, et le jeu de démonstration refuse toute base non locale. La procédure a été vérifiée "
+    "sur une copie remplie de la base : empreintes identiques des 26 tables avant et après la mise à jour.")
 D.h2('8.3 Variables d’environnement')
 D.table(['Variable', 'Rôle'], [
     ['DATABASE_URL', 'Connexion PostgreSQL (renseignée automatiquement par le Blueprint Render, ou adresse Neon)'],
-    ['ADMIN_PASSWORD', 'Mot de passe initial du compte « admin » (premier démarrage)'],
+    ['ADMIN_PASSWORD', 'Mot de passe initial du compte « admin » (lu au premier démarrage seulement)'],
+    ['ALLOW_DESTRUCTIVE_MIGRATIONS', 'À définir à 1, exceptionnellement et après sauvegarde, pour autoriser une migration qui supprime des données'],
     ['APP_URL', 'Adresse publique (liens des QR codes et des fiches d’accès, plan du site, aperçus de partage)'],
     ['APP_SECRET', 'Clé de signature des jetons anti-spam et des empreintes d’audience (générée automatiquement par Render)'],
     ['SMS_PROVIDER', 'SIMULATION, ORANGE, TWILIO ou AFRICASTALKING'],

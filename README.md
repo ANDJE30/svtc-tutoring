@@ -87,6 +87,19 @@ Chaque `git push` sur la branche choisie redéploie automatiquement ; les migrat
 
 > **Limites de l'offre gratuite Render.** Le service s'endort après 15 minutes sans visite (premier affichage d'environ une minute ensuite). La **base PostgreSQL gratuite expire 30 jours après sa création** : avant l'échéance, passez-la à l'offre Basic (quelques dollars par mois) ou remplacez `DATABASE_URL` par une base **Neon** gratuite et permanente (neon.tech), sans autre changement de code.
 
+### Mettre à jour le site sans perdre les données
+
+Une mise à jour **ne touche jamais aux données saisies** (paramètres, élèves, paiements, notes, comptes, fichiers) :
+
+1. Publiez les modifications du code sur la branche suivie par le service Render (`git push`) : Render reconstruit et redémarre automatiquement le site, la base PostgreSQL reste la même.
+2. Pendant la construction, `scripts/migrate.mjs` applique **uniquement les migrations nouvelles** (tables ou colonnes ajoutées). Si une migration en attente devait supprimer des données (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE`, `DELETE`), la construction s'arrête et **la version en ligne reste inchangée** ; pour une suppression voulue, sauvegardez puis relancez avec `ALLOW_DESTRUCTIVE_MIGRATIONS=1`.
+3. Au démarrage, l'initialisation ne crée les valeurs par défaut (paramètres, classes, matières, salles, compte admin) **que si elles n'existent pas** : rien de ce que le centre a modifié n'est écrasé, et `ADMIN_PASSWORD` n'est plus relu une fois l'administrateur créé.
+4. Si la construction échoue, Render garde la version précédente en ligne ; **Rollback** (onglet Events) permet aussi de revenir à un déploiement antérieur, toujours sur la même base.
+
+À ne pas faire sur la base de production : créer un **nouveau Blueprint** ou supprimer puis recréer le service ou la base (une base neuve et vide serait créée), modifier `DATABASE_URL`, lancer `seed:demo` (le script refuse désormais toute base non locale). Avant une mise à jour importante, téléchargez la **sauvegarde** (Administration ▸ Sauvegarde & export).
+
+Vérification : la procédure a été rejouée sur une copie remplie de la base (construction Render complète, démarrage, visite des pages) avec des empreintes identiques des 26 tables avant et après.
+
 Autre hébergeur possible : **Vercel + Neon** (import du dépôt dans Vercel, base Neon intégrée, variables `ADMIN_PASSWORD` et `APP_SECRET`). Les paramètres `channel_binding` des adresses Neon sont neutralisés automatiquement.
 
 Variables d'environnement : voir `.env.example` (base de données, mot de passe initial, adresse publique `APP_URL`, clé `APP_SECRET`, passerelle SMS facultative : Orange SMS API, Twilio ou Africa's Talking).
