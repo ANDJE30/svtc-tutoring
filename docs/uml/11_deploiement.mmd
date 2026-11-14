@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph Clients["Terminaux (navigateur ou application installée PWA)"]
+    PC["💻 Ordinateur<br/>Administration"]
+    TAB["📱 Tablette"]
+    TEL["📱 Smartphone<br/>Encadreurs et parents"]
+  end
+  subgraph Render["Render — région Francfort (HTTPS)"]
+    WEB["Service web « svtc-tutoring »<br/>Node.js 22 · Next.js 16<br/>pages, actions, API PDF,<br/>CSP avec nonce"]
+    DB[("PostgreSQL « svtc-tutoring-db »<br/>données, fichiers PDF,<br/>sessions, journal")]
+    GH["Redéploiement automatique<br/>depuis GitHub ANDJE30/svtc-tutoring<br/>(render.yaml)"]
+  end
+  SMS["Passerelle SMS (option)<br/>Orange SMS API / Twilio /<br/>Africa's Talking"]
+  WA["WhatsApp (liens wa.me)"]
+  VIS["🌐 Visiteurs du site public<br/>demande d'inscription"]
+  PC & TAB & TEL & VIS -- "HTTPS<br/>svtc-tutoring.onrender.com" --> WEB
+  WEB -- "réseau privé Render" --> DB
+  GH --> WEB
+  WEB -- "HTTPS" --> SMS
+  PC -. "un clic" .-> WA

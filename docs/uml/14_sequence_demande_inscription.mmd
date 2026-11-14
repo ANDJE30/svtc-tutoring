@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  actor V as Parent visiteur
+  participant N as Navigateur
+  participant S as Serveur Next.js
+  participant DB as PostgreSQL
+  actor A as Administrateur
+  V->>N: Ouvre la page d'accueil puis « Inscrire mon enfant »
+  N->>S: GET /
+  S-->>N: Page + jeton horodaté signé (HMAC) + champ piège invisible
+  V->>N: Remplit le formulaire (validation instantanée : obligatoires, téléphone camerounais, e-mail, consentement)
+  N->>S: Action serveur submitEnrollmentRequest (contrôle d'origine)
+  alt Champ piège rempli (robot)
+    S-->>N: Réponse de succès identique, rien n'est enregistré
+  else Jeton invalide, expiré ou envoi en moins de 3 s
+    S-->>N: Message clair : recharger ou vérifier puis renvoyer
+  else Plus de 5 demandes par heure depuis la même adresse IP
+    S-->>N: « Trop de demandes, appelez le centre »
+  else Données valides (schéma Zod)
+    S->>DB: INSERT enrollment_requests (statut NOUVELLE) + journal d'audit
+    S-->>N: Confirmation + lien WhatsApp du centre
+    A->>S: Ouvre l'administration (badge « Demandes d'inscription »)
+    S->>DB: Demandes NOUVELLE
+    A->>S: « Inscrire l'élève » (fiche préremplie, parent retrouvé par son numéro)
+    S->>DB: INSERT students (+ parent) puis demande INSCRITE
+  end
