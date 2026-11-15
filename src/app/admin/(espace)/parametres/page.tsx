@@ -149,6 +149,10 @@ export default async function SettingsPage() {
                 <option value="WINDOW">Plage complète de la séance (salle réservée toute la séance)</option>
               </select>
             </label>
+            <label className="block"><span className="label">Début du mois de location (jour)</span>
+              <input type="number" name="rentStartDay" className="input w-28" min={1} max={28} defaultValue={s.billing.rentStartDay} required />
+              <span className="hint">1 = mois civil (du 1er au dernier jour). Ex. 15 : le mois de location d&apos;octobre va du 15 octobre au 14 novembre (à cheval sur deux mois). Un intervalle particulier peut aussi être fixé pour un mois donné dans Location des salles ; les mois déjà réglés gardent leur intervalle.</span>
+            </label>
           </div>
           <div className="space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-navy-500">Salaires des encadreurs</h3>

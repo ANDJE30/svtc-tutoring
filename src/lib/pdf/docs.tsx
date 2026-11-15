@@ -6,6 +6,7 @@ import { timeslots, payments, students, classes, users, seances, verifications, 
 import { getCurrentYear, getSettings } from '../settings';
 import { balances, refData, seancesWithNames, studentProgress, studentsOfYear, tutorName } from '../queries';
 import { computePayroll, computeRentReport, cashJournal, rentPaid } from '../payroll';
+import { rentPeriodBounds } from '../rent-period';
 import { appreciation, attendanceStats } from '../calc';
 import { dateFr, dateLong, dateTimeFr, duration, hm, hours, money, num, pct, periodLabel, phoneFr, score, timeOf } from '../format';
 import { DAYS, EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYMENT_TYPES, SALARY_MODES, SEANCE_STATUS, ATTENDANCE_STATUS, EVALUATION_TYPES } from '../constants';
@@ -140,12 +141,12 @@ export async function salairesPdf(period: string) {
 // ---------------------------------------------------------------- Location
 export async function locationPdf(period: string) {
   const st = await getSettings();
-  const { start, end } = periodBounds(period);
+  const { start, end } = await rentPeriodBounds(period);
   const [rep, paid] = await Promise.all([computeRentReport(start, end), rentPaid(period)]);
   const gap = paid.total > 0 ? rep.total - paid.total : 0;
   const basis = { PLANNED: 'durée prévue des séances tenues', ACTUAL: 'durée réelle des séances', WINDOW: 'plage complète de chaque journée de séance' }[rep.basis];
   return toPdf(
-    <SvtcDoc settings={st} bannerOverride={await banner(st)} title={`État de location des salles — ${periodLabel(period)}`} subtitle={`Salles du ${st.identity.host} · base de calcul : ${basis}`}>
+    <SvtcDoc settings={st} bannerOverride={await banner(st)} title={`État de location des salles — ${periodLabel(period)}`} subtitle={`Mois de location du ${dateFr(start)} au ${dateFr(end)} · salles du ${st.identity.host} · base de calcul : ${basis}`}>
       <KeyValues items={[
         ['Période', `du ${dateFr(start)} au ${dateFr(end)}`], ['Heures', hours(rep.minutes)],
         ...st.sessions.days.map((d) => [`Tarif ${d.label.toLowerCase()}`, rep.byRoom.map((r) => `${r.room.name} : ${money(r.room.rates?.[String(d.day)] ?? 0)}/h`).join(' · ')] as [string, string]),

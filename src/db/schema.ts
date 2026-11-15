@@ -362,6 +362,19 @@ export const rentEntries = pgTable('rent_entries', {
   createdAt: createdAt(),
 }, (t) => [index('rent_entries_date_idx').on(t.date), index('rent_entries_room_idx').on(t.roomId, t.date)]);
 
+/**
+ * Intervalle d'un « mois de location » (AAAA-MM) lorsqu'il diffère du mois civil : un mois de cours peut couvrir
+ * la fin d'un mois et le début du suivant (ex. octobre = du 15/10 au 14/11). Également figé au moment du règlement.
+ */
+export const rentPeriods = pgTable('rent_periods', {
+  period: text('period').primaryKey(), // AAAA-MM
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  notes: text('notes'),
+  updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---------------------------------------------------------------- Communication
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),

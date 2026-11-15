@@ -126,6 +126,13 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
     await pg.locator('[data-sonner-toast]').filter({ hasText: /ajoutée/ }).first().waitFor();
     await pg.goto(`${BASE}/admin/location?mois=2026-10`, { waitUntil: 'networkidle' });
   }, wait: 500 });
+  await shot(a, '30d_admin_location_intervalle', '/admin/location?mois=2026-11', { before: async (pg) => {
+    await pg.getByRole('button', { name: /Modifier l'intervalle/ }).click();
+    const dlg = pg.locator('dialog[open]');
+    await dlg.locator('input[name=start]').fill('2026-11-15');
+    await dlg.locator('input[name=end]').fill('2026-12-14');
+    await dlg.locator('input[name=notes]').fill('Mois de cours du 15 au 14');
+  }, wait: 600 });
   await shot(a, '30b_admin_location_ajout', '/admin/location?mois=2026-11', { before: async (pg) => {
     await pg.getByRole('button', { name: 'Ajouter une date' }).click();
     const dlg = pg.locator('dialog[open]');

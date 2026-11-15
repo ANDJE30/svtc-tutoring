@@ -1,16 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, desc, eq, like } from 'drizzle-orm';
+import { and, desc, eq, inArray, like } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db';
-import { payments, students, expenses, salarySlips, rentSettlements, rentEntries, rooms, tutors, verifications } from '@/db/schema';
+import { payments, students, expenses, salarySlips, rentSettlements, rentEntries, rentPeriods, rooms, tutors, verifications } from '@/db/schema';
+import { rentBoundsMany, rentPeriodBounds, rentPeriodOfDate } from '@/lib/rent-period';
 import { assertRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 import { formObject, safe, UserError, zs, type ActionResult } from '@/lib/action';
 import { getCurrentYear, getSettings } from '@/lib/settings';
 import { computePayroll, computeRentReport, rentPaid } from '@/lib/payroll';
-import { dayOfWeek, localToDate, nowHM, periodBounds, todayISO } from '@/lib/time';
+import { addDays, addMonths, dayOfWeek, localToDate, nowHM, periodBounds, todayISO } from '@/lib/time';
 import { periodLabel, money, dateFr } from '@/lib/format';
 import { randomCode } from '@/lib/passwords';
 import { PAYMENT_METHODS } from '@/lib/constants';
@@ -199,7 +200,8 @@ export async function payRent(period: string) {
     zs.period().parse(period);
     const [existing] = await db.select().from(rentSettlements).where(eq(rentSettlements.period, period));
     if (existing) throw new UserError('La location de ce mois est déjà réglée.');
-    const { start, end } = periodBounds(period);
+    const bounds = await rentPeriodBounds(period);
+    const { start, end } = bounds;
     const rep = await computeRentReport(start, end);
     if (rep.total <= 0) throw new UserError('Aucune heure de location pour ce mois.');
     const year = await getCurrentYear();
@@ -210,6 +212,8 @@ export async function payRent(period: string) {
         amount: rep.total, method: 'ESPECES', beneficiary: s.identity.host, sourceType: 'LOCATION', sourceRef: period, createdBy: me.id,
       }).returning({ id: expenses.id });
       await tx.insert(rentSettlements).values({ period, amount: rep.total, paidAt: new Date(), expenseId: e.id });
+      // L'intervalle sur lequel le mois a été payé est figé : un changement ultérieur des paramètres ne le modifie pas
+      await tx.insert(rentPeriods).values({ period, startDate: start, endDate: end, notes: 'Intervalle figé au règlement', updatedBy: me.id }).onConflictDoNothing();
     });
     await audit(me, 'LOCATION_PAYEE', { details: { period, amount: rep.total } });
     refresh(['/admin/location', '/admin/depenses']);
@@ -220,7 +224,7 @@ export async function payRent(period: string) {
 // ---------------------------------------------------------------- Location : ajustements (dates ajoutées ou retirées)
 /** Mois de location concerné et indication « déjà réglé » (pour le journal d'audit et le message de retour). */
 async function rentPeriodInfo(date: string) {
-  const period = date.slice(0, 7);
+  const period = await rentPeriodOfDate(date);
   const [paid] = await db.select({ id: rentSettlements.id }).from(rentSettlements).where(eq(rentSettlements.period, period));
   return { period, settled: !!paid };
 }
@@ -310,7 +314,7 @@ export async function payRentComplement(period: string): Promise<ActionResult> {
     zs.period().parse(period);
     const [settlement] = await db.select().from(rentSettlements).where(eq(rentSettlements.period, period));
     if (!settlement) throw new UserError('Cette location n’est pas encore réglée : utilisez « Marquer comme réglé ».');
-    const { start, end } = periodBounds(period);
+    const { start, end } = await rentPeriodBounds(period);
     const [rep, paid] = await Promise.all([computeRentReport(start, end), rentPaid(period)]);
     const diff = rep.total - paid.total;
     if (diff <= 0) throw new UserError('Aucun complément à régler pour ce mois.');
@@ -326,6 +330,61 @@ export async function payRentComplement(period: string): Promise<ActionResult> {
     await audit(me, 'LOCATION_COMPLEMENT_PAYE', { details: { period, complement: diff, total: paid.total + diff } });
     refresh(['/admin/location', '/admin/depenses']);
     return { ok: true, message: `Complément de ${money(diff)} réglé pour ${periodLabel(period)} (total réglé : ${money(paid.total + diff)}).` };
+  });
+}
+
+/**
+ * Fixe l'intervalle d'un mois de location (il peut couvrir deux mois consécutifs, ex. du 15/10 au 14/11).
+ * Les mois voisins sans intervalle fixé se raccordent automatiquement ; un chevauchement avec un mois voisin fixé est refusé.
+ */
+export async function setRentPeriod(period: string, fd: FormData): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('ADMIN');
+    zs.period().parse(period);
+    const start = zs.date('Début').parse(fd.get('start'));
+    const end = zs.date('Fin').parse(fd.get('end'));
+    const notes = String(fd.get('notes') ?? '').trim().slice(0, 120) || null;
+    if (end < start) throw new UserError('La date de fin doit suivre la date de début.');
+    const days = Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
+    if (days > 62) throw new UserError('Un mois de location ne peut pas dépasser 62 jours.');
+    const prevP = addMonths(period, -1);
+    const nextP = addMonths(period, 1);
+    const own = periodBounds(period);
+    if (start < periodBounds(prevP).start || start > own.end) throw new UserError(`Le début doit se situer en ${periodLabel(prevP)} ou en ${periodLabel(period)}.`);
+    if (end < own.start || end > periodBounds(nextP).end) throw new UserError(`La fin doit se situer en ${periodLabel(period)} ou en ${periodLabel(nextP)}.`);
+    const fixed = await db.select().from(rentPeriods).where(inArray(rentPeriods.period, [prevP, nextP]));
+    const prev = fixed.find((x) => x.period === prevP);
+    const next = fixed.find((x) => x.period === nextP);
+    if (prev && start <= prev.endDate) throw new UserError(`Chevauchement avec le mois de location de ${periodLabel(prevP)} (du ${dateFr(prev.startDate)} au ${dateFr(prev.endDate)}) : commencez au plus tôt le ${dateFr(addDays(prev.endDate, 1))}.`);
+    if (next && end >= next.startDate) throw new UserError(`Chevauchement avec le mois de location de ${periodLabel(nextP)} (du ${dateFr(next.startDate)} au ${dateFr(next.endDate)}) : terminez au plus tard le ${dateFr(addDays(next.startDate, -1))}.`);
+    await db.insert(rentPeriods).values({ period, startDate: start, endDate: end, notes, updatedBy: me.id })
+      .onConflictDoUpdate({ target: rentPeriods.period, set: { startDate: start, endDate: end, notes, updatedBy: me.id, updatedAt: new Date() } });
+    await audit(me, 'LOCATION_INTERVALLE_FIXE', { details: { period, start, end } });
+    const nb = await rentBoundsMany([prevP, nextP]);
+    const neighbours = [nb.get(prevP)!, nb.get(nextP)!].filter((b) => !b.custom).map((b) => `${periodLabel(b.period)} : du ${dateFr(b.start)} au ${dateFr(b.end)}`);
+    // Journées laissées hors de tout mois de location entre deux intervalles fixés
+    const gaps = [
+      prev && addDays(prev.endDate, 1) < start ? `du ${dateFr(addDays(prev.endDate, 1))} au ${dateFr(addDays(start, -1))}` : null,
+      next && addDays(end, 1) < next.startDate ? `du ${dateFr(addDays(end, 1))} au ${dateFr(addDays(next.startDate, -1))}` : null,
+    ].filter(Boolean);
+    refresh(['/admin/location']);
+    return {
+      ok: true,
+      message: `Mois de location de ${periodLabel(period)} : du ${dateFr(start)} au ${dateFr(end)}.${neighbours.length ? ` Mois voisins raccordés — ${neighbours.join(' ; ')}.` : ''}${gaps.length ? ` Attention : ${gaps.join(' et ')} n’appartient à aucun mois de location (ces journées ne seront pas facturées).` : ''}`,
+    };
+  });
+}
+
+/** Revient à l'intervalle par défaut (jour de début des paramètres) pour un mois de location. */
+export async function resetRentPeriod(period: string): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('ADMIN');
+    zs.period().parse(period);
+    await db.delete(rentPeriods).where(eq(rentPeriods.period, period));
+    await audit(me, 'LOCATION_INTERVALLE_DEFAUT', { details: { period } });
+    const b = await rentPeriodBounds(period);
+    refresh(['/admin/location']);
+    return { ok: true, message: `Mois de location de ${periodLabel(period)} : intervalle par défaut rétabli (du ${dateFr(b.start)} au ${dateFr(b.end)}).` };
   });
 }
 

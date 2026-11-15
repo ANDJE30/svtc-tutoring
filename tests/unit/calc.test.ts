@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeSalary, computeRent, applyRentEntries, doneMinutes, studentDue, allocate, attendanceStats, weightedAverage, generatePlanning, findConflicts } from '../../src/lib/calc';
+import { computeSalary, computeRent, applyRentEntries, rentDefaultBounds, rentPeriodForDate, doneMinutes, studentDue, allocate, attendanceStats, weightedAverage, generatePlanning, findConflicts } from '../../src/lib/calc';
 import { amountInWords } from '../../src/lib/words';
 import { money, normalizePhone, isValidCmPhone, phoneFr, dateLong, duration } from '../../src/lib/format';
 import { localToDate, todayISO, periodBounds, schoolMonthToPeriod, datesBetween, weekStart } from '../../src/lib/time';
@@ -68,6 +68,18 @@ test('location des salles : dates ajoutées et retirées par l’administration'
   assert.equal(added.entryId, 8);
   assert.deepEqual(lines.map((l) => l.date), ['2026-11-04', '2026-11-08', '2026-11-14']);
   assert.equal(lines.reduce((a, l) => a + l.amount, 0), 1250 + 2000 + 5250);
+});
+
+test('mois de location : mois civil ou à cheval sur deux mois', () => {
+  assert.deepEqual(rentDefaultBounds('2026-10', 1), { start: '2026-10-01', end: '2026-10-31' });
+  assert.deepEqual(rentDefaultBounds('2027-02', 1), { start: '2027-02-01', end: '2027-02-28' });
+  assert.deepEqual(rentDefaultBounds('2026-10', 15), { start: '2026-10-15', end: '2026-11-14' });
+  assert.deepEqual(rentDefaultBounds('2026-12', 15), { start: '2026-12-15', end: '2027-01-14' });
+  const bounds = (p: string) => rentDefaultBounds(p, 15);
+  assert.equal(rentPeriodForDate('2026-11-05', bounds), '2026-10'); // 5 novembre : mois de location d'octobre
+  assert.equal(rentPeriodForDate('2026-11-20', bounds), '2026-11');
+  assert.equal(rentPeriodForDate('2027-01-10', bounds), '2026-12');
+  assert.equal(rentPeriodForDate('2026-11-05', (p) => rentDefaultBounds(p, 1)), '2026-11');
 });
 
 test('montant dû par un élève et répartition des paiements', () => {

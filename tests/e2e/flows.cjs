@@ -371,6 +371,60 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
       if (!/ENOENT/.test(String(e.message))) throw e;
     }
   });
+  await step('location : mois de location à cheval sur deux mois (intervalle, raccord, date du mois suivant)', async () => {
+    const setInterval = async (mois, du, au) => {
+      await admin.goto(`${BASE}/admin/location?mois=${mois}`);
+      await admin.getByRole('button', { name: /Modifier l'intervalle/ }).click();
+      const dlg = admin.locator('dialog[open]');
+      await dlg.locator('input[name=start]').fill(du);
+      await dlg.locator('input[name=end]').fill(au);
+      await dlg.getByRole('button', { name: /Enregistrer l'intervalle/ }).click();
+    };
+    // Septembre 15/09 → 14/10 chevaucherait octobre (réglé, intervalle figé) : refusé
+    await setInterval('2026-09', '2026-09-15', '2026-10-14');
+    await toast(admin, /Chevauchement avec le mois de location de octobre 2026/);
+    // Novembre du 15/11 au 14/12 : accepté
+    await setInterval('2026-11', '2026-11-15', '2026-12-14');
+    await toast(admin, /Mois de location de novembre 2026 : du 15\/11\/2026 au 14\/12\/2026/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    assert(/du 15\/11\/2026 au 14\/12\/2026/.test(await admin.locator('main').innerText()), 'intervalle non affiché');
+    assert(/À cheval sur deux mois/.test(await admin.locator('main').innerText()), 'mention « à cheval sur deux mois » absente');
+    // Une date de décembre appartient au mois de location de novembre
+    await admin.getByRole('button', { name: 'Ajouter une date' }).click();
+    const dlg = admin.locator('dialog[open]');
+    await dlg.locator('select[name=roomId]').selectOption({ label: 'Salle B' });
+    await dlg.locator('input[name=date]').fill('2026-12-05');
+    await dlg.locator('input[name=heures]').fill('2');
+    await dlg.locator('input[name=rate]').fill('1000');
+    await dlg.getByRole('button', { name: /Ajouter à l'état de location/ }).click();
+    await toast(admin, /05\/12\/2026 ajoutée à l’état de location/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    assert(await admin.locator('tr', { hasText: '05/12/2026' }).count(), 'la date de décembre doit figurer dans le mois de location de novembre');
+    // Décembre se raccorde : il commence le 15/12
+    await admin.goto(`${BASE}/admin/location?mois=2026-12`);
+    assert(/du 15\/12\/2026 au 31\/12\/2026/.test(await admin.locator('main').innerText()), 'décembre non raccordé');
+    // Retour à l'intervalle par défaut
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    await admin.getByRole('button', { name: /Intervalle par défaut/ }).click();
+    await toast(admin, /intervalle par défaut rétabli \(du 01\/11\/2026 au 30\/11\/2026\)/);
+  });
+  await step('paramètre « début du mois de location » : mois réglé figé, mois suivant raccordé', async () => {
+    const setStartDay = async (n) => {
+      await admin.goto(`${BASE}/admin/parametres`);
+      const form = admin.locator('form', { has: admin.locator('input[name=rentStartDay]') });
+      await form.locator('input[name=rentStartDay]').fill(String(n));
+      await form.getByRole('button', { name: 'Enregistrer' }).click();
+      await toast(admin, /Paramètres enregistrés/);
+    };
+    await setStartDay(15);
+    await admin.goto(`${BASE}/admin/location?mois=2026-10`);
+    assert(/du 01\/10\/2026 au 31\/10\/2026/.test(await admin.locator('main').innerText()), 'le mois réglé doit garder son intervalle');
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    assert(/du 01\/11\/2026 au 14\/12\/2026/.test(await admin.locator('main').innerText()), 'novembre doit se raccorder à octobre et finir le 14/12');
+    await admin.goto(`${BASE}/admin/location?mois=2026-12`);
+    assert(/du 15\/12\/2026 au 14\/01\/2027/.test(await admin.locator('main').innerText()), 'décembre doit aller du 15/12 au 14/01');
+    await setStartDay(1);
+  });
   await step('approbation d’un document pédagogique', async () => {
     await admin.goto(`${BASE}/admin/documents?statut=SOUMIS`);
     await admin.getByRole('button', { name: /Examiner/ }).first().click();

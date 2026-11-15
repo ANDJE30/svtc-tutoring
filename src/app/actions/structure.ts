@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { count, eq, ne, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db';
-import { academicYears, classes, subjects, rooms, students } from '@/db/schema';
+import { academicYears, classes, subjects, rooms, students, rentSettlements, rentPeriods } from '@/db/schema';
+import { rentDefaultBounds } from '@/lib/calc';
 import { assertRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 import { formObject, safe, UserError, zs, type ActionResult } from '@/lib/action';
@@ -127,11 +128,21 @@ export async function saveFinanceSettings(fd: FormData) {
     const months = fd.getAll('billingMonths').map(String).filter((m) => /^(0[1-9]|1[0-2])$/.test(m));
     if (months.length === 0) throw new UserError('Sélectionnez au moins un mois facturable.');
     const s = await getSettings();
+    // Changement du jour de début : les mois de location déjà réglés gardent l'intervalle sur lequel ils ont été payés
+    const newStartDay = zs.int('Jour de début du mois de location', 1, 28).parse(f.rentStartDay ?? s.billing.rentStartDay);
+    if (newStartDay !== s.billing.rentStartDay) {
+      const settled = await db.select({ period: rentSettlements.period }).from(rentSettlements);
+      for (const { period } of settled) {
+        const b = rentDefaultBounds(period, s.billing.rentStartDay);
+        await db.insert(rentPeriods).values({ period, startDate: b.start, endDate: b.end, notes: 'Intervalle figé (mois réglé)', updatedBy: me.id }).onConflictDoNothing();
+      }
+    }
     await saveSettings({
       billing: {
         receiptPrefix: (f.receiptPrefix ?? 'SVTC').replace(/[^A-Za-z0-9-]/g, '').slice(0, 10) || 'SVTC',
         billingMonths: months,
         rentBasis: z.enum(['PLANNED', 'ACTUAL', 'WINDOW']).parse(f.rentBasis ?? 'PLANNED'),
+        rentStartDay: zs.int('Jour de début du mois de location', 1, 28).parse(f.rentStartDay ?? s.billing.rentStartDay),
       },
       salary: {
         mode: z.enum(['PRORATA', 'HORAIRE']).parse(f.salaryMode ?? 'PRORATA'),

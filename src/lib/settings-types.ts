@@ -29,6 +29,8 @@ export type Settings = {
     receiptPrefix: string;
     billingMonths: string[]; // « 10 », « 11 »…
     rentBasis: 'PLANNED' | 'ACTUAL' | 'WINDOW';
+    /** Jour de début du « mois de location » (1 = mois civil ; 15 = du 15 au 14 du mois suivant, à cheval sur deux mois). */
+    rentStartDay: number;
   };
   salary: {
     mode: 'PRORATA' | 'HORAIRE';
@@ -71,6 +73,7 @@ export const DEFAULT_SETTINGS: Settings = {
     receiptPrefix: 'SVTC',
     billingMonths: ['10', '11', '12', '01', '02', '03', '04', '05'],
     rentBasis: 'PLANNED',
+    rentStartDay: 1,
   },
   salary: { mode: 'PRORATA', capAt100: true, countBasis: 'ACTUAL_CAPPED' },
   sms: { senderName: 'SVTC', signature: 'SVTC — 657 513 641' },

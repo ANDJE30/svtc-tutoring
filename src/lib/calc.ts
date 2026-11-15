@@ -111,6 +111,38 @@ export function applyRentEntries(computed: RentLine[], entries: RentEntry[]): { 
   return { lines, excluded };
 }
 
+/**
+ * Intervalle par défaut d'un mois de location : mois civil si le jour de début vaut 1,
+ * sinon du jour J du mois au jour J-1 du mois suivant (ex. J = 15 : octobre = du 15/10 au 14/11).
+ */
+export function rentDefaultBounds(period: string, startDay: number): { start: string; end: string } {
+  const [y, m] = period.split('-').map(Number);
+  const day = Math.min(28, Math.max(1, Math.round(startDay || 1)));
+  const iso = (yy: number, mm: number, dd: number) => `${yy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+  const next = m === 12 ? [y + 1, 1] : [y, m + 1];
+  if (day === 1) {
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return { start: iso(y, m, 1), end: iso(y, m, last) };
+  }
+  const endDate = new Date(Date.UTC(next[0], next[1] - 1, day - 1));
+  return { start: iso(y, m, day), end: endDate.toISOString().slice(0, 10) };
+}
+
+/** Mois de location (AAAA-MM) auquel appartient une date, d'après les intervalles effectifs du mois de la date et de ses voisins. */
+export function rentPeriodForDate(date: string, boundsOf: (period: string) => { start: string; end: string }): string {
+  const own = date.slice(0, 7);
+  const [y, m] = own.split('-').map(Number);
+  const shift = (n: number) => {
+    const d = new Date(Date.UTC(y, m - 1 + n, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  };
+  for (const p of [own, shift(-1), shift(1)]) {
+    const b = boundsOf(p);
+    if (date >= b.start && date <= b.end) return p;
+  }
+  return own;
+}
+
 // ---------------------------------------------------------------- Frais des élèves
 export type DueInput = {
   registrationFee: number;

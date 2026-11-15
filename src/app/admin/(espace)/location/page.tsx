@@ -1,14 +1,15 @@
 import Link from 'next/link';
-import { FileDown, Building2, CheckCircle2, CalendarPlus, Trash2, Undo2, ChevronLeft, ChevronRight, AlertTriangle, Info } from 'lucide-react';
+import { FileDown, Building2, CheckCircle2, CalendarPlus, Trash2, Undo2, ChevronLeft, ChevronRight, AlertTriangle, Info, CalendarRange, RotateCcw } from 'lucide-react';
 import { computeRentReport, rentPaid, rentSettlement } from '@/lib/payroll';
 import { getSettings } from '@/lib/settings';
 import { dateFr, dateTimeFr, duration, hours, money, periodLabel } from '@/lib/format';
 import { DAYS } from '@/lib/constants';
-import { addMonths, currentPeriod, periodBounds } from '@/lib/time';
+import { addMonths, periodBounds } from '@/lib/time';
 import { Badge, Card, PageHeader, Stat, TableWrap, Empty } from '@/components/ui';
-import { ActionButton, Modal } from '@/components/client/forms';
+import { ActionButton, ActionForm, Modal, SubmitButton } from '@/components/client/forms';
+import { rentPeriodBounds, rentPeriodOfDate } from '@/lib/rent-period';
 import { RentEntryForm } from '@/components/admin/rent-entry-form';
-import { payRent, payRentComplement, deleteRentLine, restoreRentLine } from '@/app/actions/finance';
+import { payRent, payRentComplement, deleteRentLine, restoreRentLine, setRentPeriod, resetRentPeriod } from '@/app/actions/finance';
 import { todayISO } from '@/lib/time';
 
 export const metadata = { title: 'Location des salles' };
@@ -17,11 +18,15 @@ const BASIS = { PLANNED: 'durée prévue des séances tenues', ACTUAL: 'durée r
 
 export default async function RentPage({ searchParams }: { searchParams: Promise<{ mois?: string }> }) {
   const sp = await searchParams;
-  const period = /^\d{4}-\d{2}$/.test(sp.mois ?? '') ? sp.mois! : currentPeriod();
-  const { start, end } = periodBounds(period);
+  // Mois de location en cours : celui qui contient la date du jour (peut être le mois précédent si le mois de location chevauche deux mois)
+  const thisMonth = await rentPeriodOfDate(todayISO());
+  const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mois ?? '') ? sp.mois! : thisMonth;
+  const bounds = await rentPeriodBounds(period);
+  const { start, end } = bounds;
+  const cal = periodBounds(period);
+  const spansTwoMonths = start.slice(0, 7) !== end.slice(0, 7);
   const [rep, paid, paidSum, s] = await Promise.all([computeRentReport(start, end), rentSettlement(period), rentPaid(period), getSettings()]);
   const gap = paid ? rep.total - paidSum.total : 0; // > 0 : complément à régler ; < 0 : trop-payé
-  const thisMonth = currentPeriod();
   const today = todayISO();
   const roomOpts = rep.byRoom.filter((r) => r.room.isActive).map((r) => ({ id: r.room.id, name: r.room.name, rates: r.room.rates ?? {} }));
   const roomName = new Map(rep.byRoom.map((r) => [r.room.id, r.room.name]));
@@ -46,6 +51,28 @@ export default async function RentPage({ searchParams }: { searchParams: Promise
         {period !== thisMonth && <Link href="/admin/location" className="btn btn-ghost">Mois en cours</Link>}
         {paid && <Badge tone="green" className="whitespace-normal"><CheckCircle2 size={13} className="shrink-0" /> Réglé le {dateTimeFr(paid.paidAt)} · total réglé {money(paidSum.total)}</Badge>}
       </form>
+      <div className="card flex flex-wrap items-center gap-3 p-3 sm:p-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-royal-50 text-royal-700"><CalendarRange size={20} aria-hidden /></span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-navy-950">Mois de location de {periodLabel(period)} : du {dateFr(start)} au {dateFr(end)}</p>
+          <p className="text-xs text-slate-600">
+            {bounds.custom ? `Intervalle fixé pour ce mois${bounds.notes ? ` (${bounds.notes})` : ''}.` : bounds.chained ? 'Intervalle raccordé au mois voisin dont l’intervalle est fixé.' : s.billing.rentStartDay === 1 ? 'Mois civil (jour de début défini dans Paramètres ▸ Facturation).' : `Du ${s.billing.rentStartDay} au ${s.billing.rentStartDay - 1} du mois suivant (Paramètres ▸ Facturation).`}
+            {spansTwoMonths && ' À cheval sur deux mois.'}
+          </p>
+        </div>
+        <Modal title={`Intervalle du mois de location de ${periodLabel(period)}`} subtitle="Un mois de cours peut couvrir la fin d’un mois et le début du suivant (ex. du 15/10 au 14/11)." trigger={<button className="btn btn-ghost btn-sm"><CalendarRange size={15} aria-hidden /> Modifier l&apos;intervalle</button>}>
+          <ActionForm action={setRentPeriod.bind(null, period)} reset={false} className="grid gap-4 sm:grid-cols-2">
+            <label><span className="label">Du</span><input type="date" name="start" className="input" defaultValue={start} min={periodBounds(addMonths(period, -1)).start} max={cal.end} required /></label>
+            <label><span className="label">Au</span><input type="date" name="end" className="input" defaultValue={end} min={cal.start} max={periodBounds(addMonths(period, 1)).end} required /></label>
+            <label className="sm:col-span-2"><span className="label">Note (facultatif)</span><input name="notes" className="input" maxLength={120} defaultValue={bounds.custom ? bounds.notes ?? '' : ''} placeholder="Ex. : mois de cours décalé (rentrée le 15)" /></label>
+            <p className="hint sm:col-span-2">Le début se situe dans ce mois ou le précédent, la fin dans ce mois ou le suivant (62 jours au plus). Les mois voisins sans intervalle fixé se raccordent automatiquement : aucune journée n&apos;est comptée deux fois.</p>
+            <div className="sm:col-span-2"><SubmitButton><CalendarRange size={16} aria-hidden /> Enregistrer l&apos;intervalle</SubmitButton></div>
+          </ActionForm>
+        </Modal>
+        {bounds.custom && (bounds.start !== bounds.defaultStart || bounds.end !== bounds.defaultEnd) && (
+          <ActionButton action={resetRentPeriod.bind(null, period)} confirm={`Revenir à l’intervalle par défaut (du ${dateFr(bounds.defaultStart)} au ${dateFr(bounds.defaultEnd)}) ?`} className="btn btn-ghost btn-sm"><RotateCcw size={15} aria-hidden /> Intervalle par défaut</ActionButton>
+        )}
+      </div>
       <p className="text-sm text-slate-600">L&apos;état est calculé à partir des séances. Pour ce mois comme pour les <strong>mois antérieurs</strong>, vous pouvez <strong>ajouter une date</strong> (séance hors planning, examen, réunion…) ou <strong>supprimer une ligne</strong> qui ne doit pas être facturée ; une ligne calculée supprimée peut être rétablie.</p>
       {paid && gap > 0 && (
         <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status"><AlertTriangle size={17} className="mt-0.5 shrink-0" aria-hidden /> <span>Location déjà réglée ({money(paidSum.total)}) mais l&apos;état modifié s&apos;élève à <strong>{money(rep.total)}</strong> : <strong>complément à régler : {money(gap)}</strong>. Cliquez sur « Régler le complément » une fois le paiement effectué.</span></p>

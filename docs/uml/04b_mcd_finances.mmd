@@ -14,6 +14,7 @@ erDiagram
   USERS ||--o{ ENROLLMENT_REQUESTS : "traite"
   ROOMS ||--o{ RENT_ENTRIES : "ajustée par"
   USERS ||--o{ RENT_ENTRIES : "saisit"
+  RENT_SETTLEMENTS |o--o| RENT_PERIODS : "intervalle figé"
   PAYMENTS {
     int id PK
     text receipt_no UK
@@ -74,4 +75,10 @@ erDiagram
     int id PK
     text name UK
     jsonb rates
+  }
+  RENT_PERIODS {
+    text period PK
+    date start_date
+    date end_date
+    text notes
   }

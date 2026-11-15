@@ -22,7 +22,7 @@ D.cover(
         ('Maître d’ouvrage', 'SILICON VALLEY TRAINING CENTER (SVTC) — Centre Éducatif TYRANNUS, Biyem-Assi Lac, Yaoundé (Cameroun)'),
         ('Projet', 'SVTC Répétitions : planning, séances, présences, notes, suivi des élèves, paiements, caisse, location des salles, salaires et communication avec les parents'),
         ('Document', 'Cahier des charges : besoins, spécifications fonctionnelles et techniques, conception UML, sécurité, hébergement, recette'),
-        ('Version', '1.4 — mise à jour majeure : ajout et suppression de dates dans la location des salles pour tous les mois, y compris antérieurs et déjà réglés (complément ou trop-payé), base de données conservée'),
+        ('Version', '1.5 — mise à jour majeure : mois de location pouvant couvrir deux mois consécutifs, ajout et suppression de dates pour tous les mois, base de données conservée'),
         ('Date', today),
         ('Adresse prévue', f'{URL} (hébergement Render, service « svtc-tutoring »)'),
         ('Rédaction', 'Équipe de développement full stack'),
@@ -137,6 +137,7 @@ EF = [
         ('EF-35', 'État de location des salles PDF', "Heures d'occupation par salle et par jour, tarif du mercredi et du dimanche, montant par salle et total, règlement enregistré en dépense.", 'M'),
         ('EF-37', 'Ajuster l’état de location +', "Pour le mois en cours comme pour **tous les mois antérieurs**, même déjà réglés : ajout d'une journée de location (salle, date, nombre de séances, durée en heures et minutes, tarif par heure proposé selon la salle et le jour et modifiable, motif) avec calcul immédiat du montant ; suppression d'une ligne (journée ajoutée effacée, journée calculée retirée puis rétablissable) ; navigation mois précédent / mois suivant ; lignes ajoutées signalées à l'écran et dans le PDF.", 'M'),
         ('EF-38', 'Complément ou trop-payé d’un mois réglé +', "Si l'état d'un mois déjà réglé change, l'écart est affiché : complément à régler (bouton « Régler le complément », nouvelle dépense datée du jour) ou trop-payé à récupérer ; l'état de location PDF indique le montant déjà réglé et l'écart ; les dépenses passées ne sont jamais modifiées.", 'M'),
+        ('EF-39', 'Mois de location à cheval sur deux mois +', "Le « mois de location » (mois de cours) peut couvrir la fin d'un mois et le début du suivant : jour de début réglable dans les paramètres (1 = mois civil, 15 = du 15 au 14 du mois suivant) et intervalle particulier pour un mois donné (ex. du 15/11 au 14/12) ; les mois voisins se raccordent automatiquement ; chevauchement refusé ; journées hors de tout mois signalées ; une date du mois civil suivant peut être ajoutée à l'état du mois de location qui la contient ; intervalle affiché à l'écran et dans le PDF.", 'M'),
         ('EF-36', 'État des salaires PDF', "Par encadreur : heures prévues, heures effectuées, pourcentage, montant dû, primes, retenues, net à payer, émargement ; paiement unitaire ou groupé.", 'M'),
     ]),
     ('3.5 Administrateur — communication, pilotage et sécurité', [
@@ -216,6 +217,7 @@ D.table(['Réf.', 'Règle'], [
     ['RG-21', "Une mise à jour de l'application conserve la base de données : seules des migrations additives sont appliquées automatiquement ; une migration qui supprimerait des données bloque la mise à jour."],
     ['RG-22', "**Ajustements de la location** : une journée ajoutée vaut durée × tarif par heure saisis (ex. 3 h 30 × 1 500 FCFA = 5 250 FCFA) ; une journée calculée retirée n'est plus facturée mais reste rétablissable ; le total du mois, le règlement et le PDF tiennent compte de ces ajustements."],
     ['RG-23', "Les ajustements de la location sont permis **pour tous les mois**, y compris antérieurs et déjà réglés. Pour un mois réglé, l'écart entre le nouvel état et le montant déjà réglé (somme du règlement initial et des compléments) est affiché : s'il est positif, le complément est enregistré comme **nouvelle dépense datée du jour** ; s'il est négatif, le trop-payé est signalé. Les dépenses et l'état de caisse des périodes passées ne sont jamais modifiés."],
+    ['RG-24', "**Mois de location** : par défaut du jour J du mois au jour J-1 du mois suivant (J = 1 : mois civil). Un intervalle peut être fixé pour un mois (début dans ce mois ou le précédent, fin dans ce mois ou le suivant, 62 jours au plus, sans chevaucher un mois voisin fixé). Un mois sans intervalle fixé commence le lendemain de la fin du mois précédent fixé et se termine la veille du début du mois suivant fixé : aucune journée n'est comptée deux fois. L'intervalle d'un mois est **figé au règlement** : un changement ultérieur des paramètres ne modifie pas les mois réglés."],
 ], widths=[1.4, 15.2], caption='Règles de gestion', font=8.6)
 D.figure(u('09_activite_salaires.png'), "Diagramme d'activité — calcul des salaires au pourcentage des heures faites", max_h=14)
 D.figure(u('10_etats_seance.png'), "Diagramme d'états — cycle de vie d'une séance", max_h=11)
@@ -241,11 +243,12 @@ D.table(['Table', 'Rôle'], [
     ['evaluations, grades', 'Évaluations (barème, coefficient) et notes'],
     ['documents, files', 'Fiches de TD et documents (métadonnées), fichiers binaires (PDF, images)'],
     ['rent_entries', 'Ajustements de la location des salles : journées ajoutées (date, séances, durée, tarif) et journées retirées'],
+    ['rent_periods', 'Intervalle des mois de location fixés (à cheval sur deux mois) ou figés au règlement'],
     ['payments, expenses, salary_slips, rent_settlements', 'Paiements, dépenses, bulletins de salaire, règlements de location'],
     ['messages, message_recipients', 'Messages, destinataires personnalisés, statut SMS, lecture, effacement par le destinataire'],
     ['audit_logs, verifications', 'Journal d’audit, codes de vérification des documents (QR)'],
     ['enrollment_requests, page_views', 'Demandes d’inscription du site public (statut, traitement), mesure d’audience anonyme'],
-], widths=[6.0, 10.6], caption='Tables de la base de données (30 tables)')
+], widths=[6.0, 10.6], caption='Tables de la base de données (31 tables)')
 D.h2('5.3 Diagrammes de séquence')
 D.figure(u('05_sequence_connexion.png'), 'Séquence — connexion sécurisée', max_h=13)
 D.figure(u('06_sequence_seance.png'), "Séquence — déroulement d'une séance, de l'appel à la paie et au suivi parent", max_h=13)
@@ -388,13 +391,13 @@ D.figures_row([c('pdf_salaires.png'), c('pdf_recu.png'), c('pdf_suivi.png')], '�
 D.h1('10. Recette et tests')
 D.p("La recette s'appuie sur des tests automatisés exécutés avant chaque livraison, en développement et sur la version de production.")
 D.table(['Campagne', 'Contenu', 'Résultat'], [
-    ['Tests unitaires (12)', 'Salaire au prorata et horaire, heures plafonnées, location mercredi/dimanche, montant dû et affectation des paiements, assiduité, moyenne pondérée, planning sans conflit, détection des conflits, montants en lettres, formats camerounais, fuseau horaire', '**12/12 réussis**'],
-    ['Tests de bout en bout (46)', 'Location des salles : ajout d’une date (3 h 30 × 1 500 FCFA), ligne signalée à l’écran et dans le PDF, retrait puis rétablissement d’une date calculée, suppression d’une date ajoutée ; mois antérieur déjà réglé : ajout d’une date, complément à régler puis réglé, suppression puis trop-payé signalé à l’écran et dans le PDF. Site public (smartphone) : un seul appel à l’action, validation du formulaire, robot ignoré, demande envoyée, page 404, robots.txt, sitemap, conditions générales, favicon, HTTPS forcé, bandeau cookies (refus respecté, choix modifiable), audience sans cookie. Messages : effacement d’un message lu puis de tous, historique admin conservé. Reçu : libellé « Espèces » vérifié dans le PDF. Planning : suppression totale, séances réalisées conservées. Administrateur : demande d’inscription transformée en élève, audience, paramètres, classe, inscription, compte parent, paiement et reçu, séance, message, salaires, location, document, caisse. Encadreur (smartphone) : démarrage, appel, fin, dépôt PDF et refus d’un faux PDF, notes (refus d’une note hors barème), envoi du suivi. Parent : connexion par téléphone, messages, reçu et suivi. Sécurité : cloisonnement des espaces, refus d’accès aux PDF d’autrui, verrouillage, mauvais espace, en-têtes, accès anonyme', '**46/46 réussis**'],
+    ['Tests unitaires (13)', 'Salaire au prorata et horaire, heures plafonnées, location mercredi/dimanche, montant dû et affectation des paiements, assiduité, moyenne pondérée, planning sans conflit, détection des conflits, montants en lettres, formats camerounais, fuseau horaire', '**13/13 réussis**'],
+    ['Tests de bout en bout (48)', 'Location des salles : mois de location à cheval sur deux mois (chevauchement refusé, intervalle du 15/11 au 14/12, date de décembre rattachée à novembre, décembre raccordé, retour au défaut), jour de début « 15 » dans les paramètres avec mois réglé figé ; ajout d’une date (3 h 30 × 1 500 FCFA), ligne signalée à l’écran et dans le PDF, retrait puis rétablissement d’une date calculée, suppression d’une date ajoutée ; mois antérieur déjà réglé : ajout d’une date, complément à régler puis réglé, suppression puis trop-payé signalé à l’écran et dans le PDF. Site public (smartphone) : un seul appel à l’action, validation du formulaire, robot ignoré, demande envoyée, page 404, robots.txt, sitemap, conditions générales, favicon, HTTPS forcé, bandeau cookies (refus respecté, choix modifiable), audience sans cookie. Messages : effacement d’un message lu puis de tous, historique admin conservé. Reçu : libellé « Espèces » vérifié dans le PDF. Planning : suppression totale, séances réalisées conservées. Administrateur : demande d’inscription transformée en élève, audience, paramètres, classe, inscription, compte parent, paiement et reçu, séance, message, salaires, location, document, caisse. Encadreur (smartphone) : démarrage, appel, fin, dépôt PDF et refus d’un faux PDF, notes (refus d’une note hors barème), envoi du suivi. Parent : connexion par téléphone, messages, reçu et suivi. Sécurité : cloisonnement des espaces, refus d’accès aux PDF d’autrui, verrouillage, mauvais espace, en-têtes, accès anonyme', '**48/48 réussis**'],
     ['Parcours complet des pages', 'Toutes les pages des trois espaces, sans erreur serveur ni erreur JavaScript', '**Aucune erreur**'],
     ['Contrôle qualité automatisé', '78 pages et 28 ressources des quatre espaces : liens cassés, accessibilité WCAG 2.1 AA (axe-core, bandeau cookies compris), affichage à 360 px', '**0 défaut**'],
     ['Performance (Lighthouse mobile)', 'Accueil, conditions, confidentialité, choix de l’espace (bandeau cookies affiché)', '**93 à 97 / 100**'],
     ['Secrets dans le front-end', 'Analyse des fichiers envoyés au navigateur (valeurs des variables secrètes, adresses de base, clés)', '**Aucun secret**'],
-    ['Mise à jour sans perte de données', 'Construction Render complète sur une copie remplie et modifiée de la base ; migrations additives 0002 (colonne) et 0003 (table rent_entries)', '**Données identiques**'],
+    ['Mise à jour sans perte de données', 'Construction Render complète sur une copie remplie et modifiée de la base ; migrations additives 0002 (colonne), 0003 (table rent_entries) et 0004 (table rent_periods)', '**Données identiques**'],
     ['Build de production', 'Compilation TypeScript stricte et optimisation Next.js', '**Réussi**'],
 ], widths=[3.6, 10.6, 2.4], caption='Résultats de la recette', font=8.5)
 
@@ -433,6 +436,7 @@ D.table(['Paramètre', 'Valeur'], [
     ['Salles', 'Salle A et Salle B : 500 FCFA/h le mercredi, 1000 FCFA/h le dimanche'],
     ['Frais (indicatifs, modifiables)', 'Inscription 5 000 FCFA ; mensualité 5 000 à 10 000 FCFA selon la classe ; mois facturables d’octobre à mai'],
     ['Salaires', 'Salaire mensuel de référence au prorata des heures effectuées, plafonné à 100 %'],
+    ['Mois de location', 'Mois civil (jour de début 1), modifiable dans les paramètres (ex. du 15 au 14) ou mois par mois'],
 ], widths=[4.2, 12.4], caption='Paramètres par défaut', font=8.6)
 
 out = os.path.join(DOCS, 'Cahier_des_charges_SVTC_Repetitions.docx')

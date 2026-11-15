@@ -22,7 +22,7 @@ D.cover(
         ('Structure', 'SILICON VALLEY TRAINING CENTER — Centre Éducatif TYRANNUS, Biyem-Assi Lac, Yaoundé'),
         ('Public', 'Administration du centre, encadreurs, parents d’élèves'),
         ('Appareils', 'Ordinateur, tablette et smartphone (navigateur récent ou application installée)'),
-        ('Version', f'1.4 — {today}'),
+        ('Version', f'1.5 — {today}'),
         ('Assistance', '657 513 641 · 695 840 597 · 697 760 779'),
     ],
     motto="Comprendre. **Pratiquer.** Maîtriser.",
@@ -141,7 +141,7 @@ D.bullets([
     ('Identité : ', 'nom, sigle, devise, slogan, présentation, lieu, adresse, 3 téléphones, WhatsApp, e-mail, nom et titre du signataire des documents (ex. « Le Promoteur »).'),
     ('Logo & bandeau : ', 'chargez un nouveau logo (PNG transparent conseillé) ou un bandeau d’en-tête pour les PDF, jusqu’à 4 Mo : l’image est **compressée automatiquement** (WebP léger pour le site, JPEG optimisé pour les PDF) ; « Logo d’origine » rétablit l’image SVTC.'),
     ('Jours, horaires et créneaux : ', 'cochez les jours de séance, saisissez début et fin, puis les créneaux séparés par « ; » (ex. 15:30-16:45 ; 16:45-18:00). Le planning automatique utilise ces créneaux.'),
-    ('Facturation : ', 'préfixe des reçus, mois facturables (mensualités) et base de calcul de la location des salles.'),
+    ('Facturation : ', 'préfixe des reçus, mois facturables (mensualités), base de calcul de la location des salles et **début du mois de location** (1 = mois civil ; 15 = du 15 au 14 du mois suivant, à cheval sur deux mois).'),
     ('Salaires : ', 'mode « prorata des heures » (salaire de référence × % d’heures effectuées) ou « taux horaire » ; heures retenues ; plafond à 100 %.'),
     ('SMS & sécurité : ', 'état de la passerelle SMS, nom d’expéditeur, signature ; option « changer le mot de passe à la première connexion ».'),
     ('Années scolaires : ', 'créez l’année suivante puis « Activer » au moment de la rentrée.'),
@@ -270,6 +270,15 @@ D.p("**Supprimer une ligne.** Cliquez sur la **corbeille** au bout de la ligne p
     "Le total du mois, le bouton **Marquer comme réglé** et le PDF tiennent compte de ces ajustements ; dans le PDF, les journées ajoutées sont marquées d’un astérisque (*) avec leur motif.")
 D.p("**Mois antérieurs.** Les ajouts et suppressions de dates sont possibles pour **n’importe quel mois**, y compris les mois passés : utilisez les boutons "
     "**‹ mois précédent** et **mois suivant ›** (ou le sélecteur de mois puis **Afficher**), puis **Ajouter une date** ou la corbeille. Le bouton **Mois en cours** ramène au mois actuel.")
+D.p("**Mois de location à cheval sur deux mois.** Un mois de cours peut couvrir la fin d’un mois et le début du suivant (ex. du 15 novembre au 14 décembre). "
+    "L’intervalle du mois affiché est indiqué dans l’encadré **Mois de location** en haut de la page.")
+D.bullets([
+    ('Pour tous les mois : ', 'Paramètres ▸ Facturation ▸ **Début du mois de location** (ex. 15). Les mois déjà réglés gardent l’intervalle sur lequel ils ont été payés.'),
+    ('Pour un mois donné : ', '**Modifier l’intervalle** ▸ indiquez **Du** (dans ce mois ou le précédent) et **Au** (dans ce mois ou le suivant), une note éventuelle, puis **Enregistrer l’intervalle**. **Intervalle par défaut** annule ce réglage.'),
+    ('Mois voisins : ', 'ils se raccordent automatiquement (ex. décembre commence alors le 15/12) ; un chevauchement avec un mois voisin déjà fixé ou réglé est refusé, et les journées qui ne seraient plus couvertes sont signalées.'),
+    ('Dates du mois suivant : ', 'une date comme le 05/12 s’ajoute à l’état du mois de location qui la contient (ici novembre) ; le formulaire « Ajouter une date » accepte toutes les dates de l’intervalle.'),
+])
+D.figure(c('30d_admin_location_intervalle.png'), 'Intervalle d’un mois de location à cheval sur deux mois (du 15/11 au 14/12)', max_h=9.5)
 D.p("**Mois déjà réglé.** Si la location du mois a déjà été marquée comme réglée, vous pouvez quand même ajouter ou supprimer des dates. L’application compare alors le nouvel état au montant déjà réglé :")
 D.bullets([
     ('Complément à régler : ', 'l’état a augmenté (ex. une réunion ajoutée : + 2 000 FCFA). Une fois le paiement effectué, cliquez sur **Régler le complément** : une dépense « Location des salles — complément » est créée à la date du jour.'),
@@ -429,6 +438,7 @@ D.table(['Question', 'Réponse'], [
     ['Comment vider ma boîte de messages ?', 'Marquez les messages comme lus, puis « Effacer » sur un message ou « Effacer les messages lus » pour tous. Les messages non lus ne peuvent pas être effacés.'],
     ['Comment changer mon choix sur les cookies ?', 'Cliquez sur « Gérer les cookies » en bas de la page d’accueil ou de la page de connexion, puis Accepter ou Refuser.'],
     ['Une journée de location manque ou ne doit pas être facturée.', 'Location des salles ▸ choisissez le mois (même un mois passé) ▸ « Ajouter une date » (salle, date, séances, durée, tarif par heure), ou corbeille sur la ligne à retirer ; une ligne calculée retirée se rétablit avec « Rétablir ».'],
+    ['Notre mois de cours va du 15 au 14.', 'Paramètres ▸ Facturation ▸ « Début du mois de location » = 15 ; ou, pour un seul mois, Location des salles ▸ « Modifier l’intervalle ».'],
     ['J’ai ajouté une date sur un mois déjà réglé.', 'La page indique le complément à régler : après paiement, cliquez sur « Régler le complément ». Si vous avez retiré une date, le trop-payé est indiqué.'],
     ['J’ai supprimé un planning par erreur.', 'Les séances réalisées et la paie sont intactes. Relancez « Générer automatiquement » puis « Générer les séances » pour la période voulue.'],
     ['Un parent a plusieurs enfants.', 'Inscrivez chaque enfant avec le même numéro de téléphone du parent : un seul compte parent, avec sélection de l’enfant.'],

@@ -29,6 +29,13 @@
       "when": 1794775173300,
       "tag": "0003_location_ajustements",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794781113304,
+      "tag": "0004_mois_location",
+      "breakpoints": true
     }
   ]
 }
