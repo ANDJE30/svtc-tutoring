@@ -22,6 +22,13 @@
       "when": 1794690496725,
       "tag": "0002_messages_effaces",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794775173300,
+      "tag": "0003_location_ajustements",
+      "breakpoints": true
     }
   ]
 }

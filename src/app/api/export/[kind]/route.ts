@@ -35,7 +35,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ kind: s
       students: await db.select().from(t.students), assignments: await db.select().from(t.assignments), timeslots: await db.select().from(t.timeslots),
       seances: await db.select().from(t.seances), attendances: await db.select().from(t.attendances), evaluations: await db.select().from(t.evaluations),
       grades: await db.select().from(t.grades), payments: await db.select().from(t.payments), expenses: await db.select().from(t.expenses),
-      salarySlips: await db.select().from(t.salarySlips), rentSettlements: await db.select().from(t.rentSettlements),
+      salarySlips: await db.select().from(t.salarySlips), rentSettlements: await db.select().from(t.rentSettlements), rentEntries: await db.select().from(t.rentEntries),
       documents: await db.select({ id: t.documents.id, title: t.documents.title, type: t.documents.type, classId: t.documents.classId, subjectId: t.documents.subjectId, tutorId: t.documents.tutorId, status: t.documents.status, createdAt: t.documents.createdAt }).from(t.documents),
       messages: await db.select().from(t.messages),
       users: await db.select({ id: t.users.id, role: t.users.role, username: t.users.username, fullName: t.users.fullName, phone: t.users.phone, isActive: t.users.isActive }).from(t.users),

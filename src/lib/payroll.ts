@@ -1,9 +1,9 @@
 import 'server-only';
 import { and, asc, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { seances, tutors, salarySlips, rooms, rentSettlements, payments, expenses, students, classes } from '@/db/schema';
+import { seances, tutors, salarySlips, rooms, rentSettlements, rentEntries, payments, expenses, students, classes } from '@/db/schema';
 import { getSettings } from './settings';
-import { computeRent, computeSalary, doneMinutes, plannedMinutes } from './calc';
+import { applyRentEntries, computeRent, computeSalary, doneMinutes, plannedMinutes } from './calc';
 import { periodBounds } from './time';
 
 /** État des salaires d'un mois : heures prévues, heures effectuées, pourcentage, montant. */
@@ -38,13 +38,15 @@ export async function computePayroll(period: string) {
 /** État de location des salles d'un mois (ou d'une période). */
 export async function computeRentReport(start: string, end: string) {
   const s = await getSettings();
-  const [list, rms] = await Promise.all([
+  const [list, rms, entries] = await Promise.all([
     db.select().from(seances).where(and(gte(seances.date, start), lte(seances.date, end))),
     db.select().from(rooms).orderBy(asc(rooms.name)),
+    db.select().from(rentEntries).where(and(gte(rentEntries.date, start), lte(rentEntries.date, end))),
   ]);
   const rates = Object.fromEntries(rms.map((r) => [r.id, r.rates ?? {}]));
   const windows = Object.fromEntries(s.sessions.days.map((d) => [d.day, { start: d.start, end: d.end }]));
-  const lines = computeRent(list, rates, s.billing.rentBasis, windows);
+  // Lignes calculées à partir des séances, puis ajustements de l'administration (dates ajoutées ou retirées)
+  const { lines, excluded } = applyRentEntries(computeRent(list, rates, s.billing.rentBasis, windows), entries);
   const byRoom = rms
     .map((r) => {
       const l = lines.filter((x) => x.roomId === r.id);
@@ -60,7 +62,7 @@ export async function computeRentReport(start: string, end: string) {
   }
   const total = lines.reduce((a, x) => a + x.amount, 0);
   const minutes = lines.reduce((a, x) => a + x.minutes, 0);
-  return { lines, byRoom, byDay, total, minutes, basis: s.billing.rentBasis };
+  return { lines, byRoom, byDay, total, minutes, basis: s.billing.rentBasis, excluded, manualCount: lines.filter((l) => l.source === 'MANUEL').length };
 }
 
 export async function rentSettlement(period: string) {

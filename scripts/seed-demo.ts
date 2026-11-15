@@ -56,7 +56,7 @@ function guardProductionDatabase() {
 async function main() {
   guardProductionDatabase();
   if (process.argv.includes('--reset')) {
-    await db.execute(sql`truncate ${t.messageRecipients}, ${t.messages}, ${t.grades}, ${t.evaluations}, ${t.attendances}, ${t.documents}, ${t.seances}, ${t.timeslots}, ${t.assignments}, ${t.payments}, ${t.salarySlips}, ${t.rentSettlements}, ${t.expenses}, ${t.students}, ${t.parents}, ${t.tutors}, ${t.verifications}, ${t.auditLogs}, ${t.authSessions}, ${t.rateLimits}, ${t.enrollmentRequests}, ${t.pageViews}, ${t.classes}, ${t.subjects}, ${t.rooms}, ${t.settings} restart identity cascade`);
+    await db.execute(sql`truncate ${t.messageRecipients}, ${t.messages}, ${t.grades}, ${t.evaluations}, ${t.attendances}, ${t.documents}, ${t.seances}, ${t.timeslots}, ${t.assignments}, ${t.payments}, ${t.salarySlips}, ${t.rentSettlements}, ${t.rentEntries}, ${t.expenses}, ${t.students}, ${t.parents}, ${t.tutors}, ${t.verifications}, ${t.auditLogs}, ${t.authSessions}, ${t.rateLimits}, ${t.enrollmentRequests}, ${t.pageViews}, ${t.classes}, ${t.subjects}, ${t.rooms}, ${t.settings} restart identity cascade`);
     await db.delete(t.users).where(sql`${t.users.role} <> 'ADMIN'`);
     await db.delete(t.files);
   }
@@ -223,6 +223,10 @@ async function main() {
   await db.insert(t.documents).values({ academicYearId: year.id, title: 'Fiche de TD n°2 — Structures conditionnelles', description: 'Exercices progressifs avec corrigé en séance.', type: 'FICHE_TD', classId: code('TLE').id, subjectId: subj('ALGO').id, tutorId: tutorIds[0], fileId: f.id, status: 'SOUMIS' });
   const [f2] = await db.insert(t.files).values({ name: 'td-adressage-ip.pdf', mime: 'application/pdf', size: pdf.length, sha256: 'demo2', data: pdf }).returning();
   await db.insert(t.documents).values({ academicYearId: year.id, title: 'TD — Adressage IPv4 et sous-réseaux', type: 'FICHE_TD', classId: code('TTI').id, subjectId: subj('RISI').id, tutorId: tutorIds[1], fileId: f2.id, status: 'APPROUVE', visibleToParents: true, reviewedBy: admin?.id, reviewedAt: new Date() });
+
+  // Location : une journée ajoutée par l'administration (examen blanc du samedi, hors planning)
+  const salleA = rooms.find((r) => r.name === 'Salle A') ?? rooms[0];
+  if (salleA) await db.insert(t.rentEntries).values({ kind: 'AJOUT', roomId: salleA.id, date: '2026-11-07', seances: 2, minutes: 180, rate: 1000, label: 'Examen blanc du BEPC', createdBy: admin?.id });
 
   // Demandes d'inscription reçues par le site public
   const reqDate = (daysAgo: number, h: number) => localToDate(addDays(todayISO(), -daysAgo), `${String(h).padStart(2, '0')}:15`);

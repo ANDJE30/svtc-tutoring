@@ -153,13 +153,23 @@ export async function locationPdf(period: string) {
         <View key={r.room.id} wrap={false}>
           <Text style={s.h2}>{r.room.name}</Text>
           <Table cols={[{ label: 'Jour', width: 18 }, { label: 'Date', width: 18 }, { label: 'Séances', width: 12, align: 'center' }, { label: 'Durée', width: 16, align: 'right' }, { label: 'Tarif / heure', width: 18, align: 'right' }, { label: 'Montant', width: 18, align: 'right' }]}
-            rows={r.lines.map((l) => [DAYS[l.dayOfWeek], dateFr(l.date), l.seances, duration(l.minutes), money(l.rate), money(l.amount)])}
+            rows={r.lines.map((l) => [DAYS[l.dayOfWeek], `${dateFr(l.date)}${l.source === 'MANUEL' ? ' *' : ''}`, l.seances, duration(l.minutes), money(l.rate), money(l.amount)])}
             total={['Sous-total', '', String(r.lines.reduce((a, l) => a + l.seances, 0)), duration(r.minutes), '', money(r.amount)]} />
         </View>
       ))}
       <View wrap={false} style={{ marginTop: 12 }}>
         <Table cols={[{ label: 'Récapitulatif', width: 50 }, { label: 'Heures', width: 25, align: 'right' }, { label: 'Montant', width: 25, align: 'right' }]}
           rows={[...rep.byDay].map(([d, v]) => [`${DAYS[d]}s`, hours(v.minutes), money(v.amount)])} total={['TOTAL À PAYER', hours(rep.minutes), money(rep.total)]} />
+        {rep.manualCount > 0 && (
+          <Text style={{ marginTop: 6, fontSize: 8, color: C.muted }}>
+            * Journée ajoutée par l&apos;administration : {rep.lines.filter((l) => l.source === 'MANUEL').map((l) => `${dateFr(l.date)}${l.label ? ` (${l.label})` : ''}`).join(' ; ')}.
+          </Text>
+        )}
+        {rep.excluded.length > 0 && (
+          <Text style={{ marginTop: 3, fontSize: 8, color: C.muted }}>
+            Journées non facturées (retirées par l&apos;administration) : {rep.excluded.map((l) => `${dateFr(l.date)} — ${rep.byRoom.find((r) => r.room.id === l.roomId)?.room.name ?? ''}`).join(' ; ')}.
+          </Text>
+        )}
         <Text style={{ marginTop: 6, fontWeight: 600 }}>Arrêté le présent état à la somme de : {amountInWords(rep.total)}.</Text>
       </View>
       <Signatures place={place(st)} left={`Pour le ${st.identity.host}`} right={signer(st)} />

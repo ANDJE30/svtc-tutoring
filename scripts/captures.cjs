@@ -108,7 +108,16 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
   await shot(a, '27_admin_impayes', '/admin/impayes');
   await shot(a, '28_admin_depenses', '/admin/depenses?du=2026-10-01');
   await shot(a, '29_admin_caisse', '/admin/caisse?du=2026-10-01');
-  await shot(a, '30_admin_location', '/admin/location?mois=2026-10');
+  await shot(a, '30_admin_location', '/admin/location?mois=2026-11');
+  await shot(a, '30b_admin_location_ajout', '/admin/location?mois=2026-11', { before: async (pg) => {
+    await pg.getByRole('button', { name: 'Ajouter une date' }).click();
+    const dlg = pg.locator('dialog[open]');
+    await dlg.locator('input[name=date]').fill('2026-11-21');
+    await dlg.locator('input[name=heures]').fill('3');
+    await dlg.locator('select[name=minutes]').selectOption('30');
+    await dlg.locator('input[name=label]').fill('Séance de rattrapage');
+    await dlg.locator('input[name=rate]').fill('1500');
+  }, wait: 700 });
   await shot(a, '31_admin_salaires', '/admin/salaires?mois=2026-10');
   await shot(a, '32_admin_messages', '/admin/messages');
   await shot(a, '33_admin_comptes', '/admin/comptes');
@@ -169,7 +178,7 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
   await shot(pd, '67_parent_suivi_ordinateur', '/parent/suivi');
 
   // PDF (enregistrés pour conversion en images)
-  const pdfs = { planning: '/api/pdf/planning', planning_classe: '/api/pdf/planning?classe=9', salaires: '/api/pdf/salaires?mois=2026-10', location: '/api/pdf/location?mois=2026-10', caisse: `/api/pdf/caisse?du=2026-10-01&au=${today}`, recu: '/api/pdf/recu/1', suivi: '/api/pdf/suivi/60', seances: '/api/pdf/seances?mois=2026-11', impayes: '/api/pdf/impayes' };
+  const pdfs = { planning: '/api/pdf/planning', planning_classe: '/api/pdf/planning?classe=9', salaires: '/api/pdf/salaires?mois=2026-10', location: '/api/pdf/location?mois=2026-11', caisse: `/api/pdf/caisse?du=2026-10-01&au=${today}`, recu: '/api/pdf/recu/1', suivi: '/api/pdf/suivi/60', seances: '/api/pdf/seances?mois=2026-11', impayes: '/api/pdf/impayes' };
   for (const [k, u] of Object.entries(pdfs)) {
     const r = await a.request.get(BASE + u);
     fs.writeFileSync(path.join(OUT, `pdf_${k}.pdf`), await r.body());

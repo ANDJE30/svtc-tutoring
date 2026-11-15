@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeSalary, computeRent, doneMinutes, studentDue, allocate, attendanceStats, weightedAverage, generatePlanning, findConflicts } from '../../src/lib/calc';
+import { computeSalary, computeRent, applyRentEntries, doneMinutes, studentDue, allocate, attendanceStats, weightedAverage, generatePlanning, findConflicts } from '../../src/lib/calc';
 import { amountInWords } from '../../src/lib/words';
 import { money, normalizePhone, isValidCmPhone, phoneFr, dateLong, duration } from '../../src/lib/format';
 import { localToDate, todayISO, periodBounds, schoolMonthToPeriod, datesBetween, weekStart } from '../../src/lib/time';
@@ -45,6 +45,29 @@ test('location des salles : 500 F/h le mercredi, 1000 F/h le dimanche', () => {
   assert.equal(lines[1].amount, 2000); // 2 h × 1000 (séance annulée exclue)
   const win = computeRent(list, rates, 'WINDOW', { 3: { start: '15:30', end: '18:00' }, 0: { start: '10:00', end: '14:00' } });
   assert.equal(win.find((l) => l.dayOfWeek === 0)!.amount, 4000);
+});
+
+test('location des salles : dates ajoutées et retirées par l’administration', () => {
+  const computed = [
+    { roomId: 1, date: '2026-11-04', dayOfWeek: 3, minutes: 150, rate: 500, amount: 1250, seances: 2 },
+    { roomId: 1, date: '2026-11-08', dayOfWeek: 0, minutes: 240, rate: 1000, amount: 4000, seances: 2 },
+    { roomId: 2, date: '2026-11-08', dayOfWeek: 0, minutes: 120, rate: 1000, amount: 2000, seances: 1 },
+  ];
+  const entries = [
+    { id: 7, kind: 'EXCLUSION', roomId: 1, date: '2026-11-08', seances: 0, minutes: 0, rate: 0, label: null },
+    { id: 8, kind: 'AJOUT', roomId: 2, date: '2026-11-14', seances: 3, minutes: 210, rate: 1500, label: 'Examen blanc' },
+  ];
+  const { lines, excluded } = applyRentEntries(computed, entries);
+  assert.equal(lines.length, 3);
+  assert.equal(excluded.length, 1);
+  assert.equal(excluded[0].entryId, 7);
+  assert.equal(excluded[0].amount, 4000);
+  const added = lines.find((l) => l.source === 'MANUEL')!;
+  assert.equal(added.amount, 5250); // 3 h 30 × 1 500 F
+  assert.equal(added.dayOfWeek, 6); // samedi
+  assert.equal(added.entryId, 8);
+  assert.deepEqual(lines.map((l) => l.date), ['2026-11-04', '2026-11-08', '2026-11-14']);
+  assert.equal(lines.reduce((a, l) => a + l.amount, 0), 1250 + 2000 + 5250);
 });
 
 test('montant dû par un élève et répartition des paiements', () => {

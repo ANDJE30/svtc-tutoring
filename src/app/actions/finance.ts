@@ -4,14 +4,14 @@ import { revalidatePath } from 'next/cache';
 import { and, desc, eq, like } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db';
-import { payments, students, expenses, salarySlips, rentSettlements, tutors, verifications } from '@/db/schema';
+import { payments, students, expenses, salarySlips, rentSettlements, rentEntries, rooms, tutors, verifications } from '@/db/schema';
 import { assertRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 import { formObject, safe, UserError, zs, type ActionResult } from '@/lib/action';
 import { getCurrentYear, getSettings } from '@/lib/settings';
 import { computePayroll, computeRentReport } from '@/lib/payroll';
-import { localToDate, nowHM, periodBounds, todayISO } from '@/lib/time';
-import { periodLabel, money } from '@/lib/format';
+import { dayOfWeek, localToDate, nowHM, periodBounds, todayISO } from '@/lib/time';
+import { periodLabel, money, dateFr } from '@/lib/format';
 import { randomCode } from '@/lib/passwords';
 import { PAYMENT_METHODS } from '@/lib/constants';
 
@@ -209,6 +209,88 @@ export async function payRent(period: string) {
     await audit(me, 'LOCATION_PAYEE', { details: { period, amount: rep.total } });
     refresh(['/admin/location', '/admin/depenses']);
     return { ok: true, message: `Location de ${periodLabel(period)} réglée : ${money(rep.total)}.` };
+  });
+}
+
+// ---------------------------------------------------------------- Location : ajustements (dates ajoutées ou retirées)
+/** Un mois dont la location est réglée est verrouillé : son état ne doit plus changer après le paiement. */
+async function assertRentOpen(date: string) {
+  const period = date.slice(0, 7);
+  const [paid] = await db.select({ id: rentSettlements.id }).from(rentSettlements).where(eq(rentSettlements.period, period));
+  if (paid) throw new UserError(`La location de ${periodLabel(period)} est déjà réglée : son état est verrouillé. Pour le modifier, supprimez d’abord la dépense « Location des salles — ${periodLabel(period)} » (menu Dépenses).`);
+}
+
+const rentEntrySchema = z.object({
+  roomId: zs.id('Salle'),
+  date: zs.date('Date'),
+  seances: zs.int('Nombre de séances', 0, 50),
+  heures: zs.int('Heures', 0, 24),
+  minutes: zs.int('Minutes', 0, 59),
+  rate: zs.int('Tarif par heure', 0, 1_000_000),
+  label: zs.optText(120),
+});
+
+/** Ajoute une journée de location (date, séances, durée, tarif par heure) à l'état de location. */
+export async function addRentEntry(fd: FormData): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('ADMIN');
+    const d = rentEntrySchema.parse({ seances: '0', minutes: '0', ...formObject(fd) });
+    const total = d.heures * 60 + d.minutes;
+    if (total <= 0) throw new UserError('Indiquez la durée de location (heures et/ou minutes).');
+    if (total > 24 * 60) throw new UserError('La durée ne peut pas dépasser 24 heures.');
+    const [room] = await db.select({ id: rooms.id, name: rooms.name }).from(rooms).where(eq(rooms.id, d.roomId));
+    if (!room) throw new UserError('Salle introuvable.');
+    await assertRentOpen(d.date);
+    const [row] = await db.insert(rentEntries).values({ kind: 'AJOUT', roomId: d.roomId, date: d.date, seances: d.seances, minutes: total, rate: d.rate, label: d.label || null, createdBy: me.id }).returning({ id: rentEntries.id });
+    const amount = Math.round((total / 60) * d.rate);
+    await audit(me, 'LOCATION_DATE_AJOUTEE', { entity: 'location', entityId: row.id, details: { salle: room.name, date: d.date, seances: d.seances, minutes: total, tarif: d.rate, montant: amount } });
+    refresh(['/admin/location', '/admin/depenses']);
+    return { ok: true, message: `${room.name} — ${dateFr(d.date)} ajoutée à l’état de location (${money(amount)}).` };
+  });
+}
+
+/**
+ * Supprime une ligne de l'état de location : une journée ajoutée est effacée ;
+ * une journée calculée à partir des séances est retirée de l'état (et peut être rétablie).
+ */
+export async function deleteRentLine(target: { entryId?: number; roomId?: number; date?: string }): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('ADMIN');
+    const f = target ?? {};
+    if (f.entryId) {
+      const id = zs.id().parse(f.entryId);
+      const [e] = await db.select().from(rentEntries).where(and(eq(rentEntries.id, id), eq(rentEntries.kind, 'AJOUT')));
+      if (!e) throw new UserError('Ligne introuvable.');
+      await assertRentOpen(e.date);
+      await db.delete(rentEntries).where(eq(rentEntries.id, id));
+      await audit(me, 'LOCATION_DATE_SUPPRIMEE', { entity: 'location', entityId: id, details: { date: e.date, roomId: e.roomId, minutes: e.minutes, tarif: e.rate } });
+      refresh(['/admin/location']);
+      return { ok: true, message: `Journée du ${dateFr(e.date)} supprimée de l’état de location.` };
+    }
+    const roomId = zs.id('Salle').parse(f.roomId);
+    const date = zs.date('Date').parse(f.date);
+    await assertRentOpen(date);
+    const [already] = await db.select({ id: rentEntries.id }).from(rentEntries).where(and(eq(rentEntries.kind, 'EXCLUSION'), eq(rentEntries.roomId, roomId), eq(rentEntries.date, date)));
+    if (!already) {
+      const [row] = await db.insert(rentEntries).values({ kind: 'EXCLUSION', roomId, date, createdBy: me.id }).returning({ id: rentEntries.id });
+      await audit(me, 'LOCATION_DATE_RETIREE', { entity: 'location', entityId: row.id, details: { roomId, date, jour: dayOfWeek(date) } });
+    }
+    refresh(['/admin/location']);
+    return { ok: true, message: `Journée du ${dateFr(date)} retirée de l’état de location (rétablissable).` };
+  });
+}
+
+/** Rétablit une journée calculée qui avait été retirée de l'état de location. */
+export async function restoreRentLine(entryId: number): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('ADMIN');
+    const [e] = await db.select().from(rentEntries).where(and(eq(rentEntries.id, entryId), eq(rentEntries.kind, 'EXCLUSION')));
+    if (!e) throw new UserError('Journée introuvable.');
+    await assertRentOpen(e.date);
+    await db.delete(rentEntries).where(eq(rentEntries.id, entryId));
+    await audit(me, 'LOCATION_DATE_RETABLIE', { entity: 'location', entityId: entryId, details: { date: e.date, roomId: e.roomId } });
+    refresh(['/admin/location']);
+    return { ok: true, message: `Journée du ${dateFr(e.date)} rétablie dans l’état de location.` };
   });
 }
 

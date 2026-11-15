@@ -6,7 +6,7 @@ Application web responsive de gestion des **cours de répétitions en informatiq
 
 | Espace | Adresse | Style | Fonctions principales |
 |---|---|---|---|
-| **Administration** | `/admin` | Console bleu nuit et or, menu latéral, palette de commandes `Ctrl + K` | Paramètres du centre (nom, logo, bandeau PDF, horaires), classes, matières, salles et tarifs, élèves et parents (import Excel/CSV), encadreurs et comptes d'accès, attributions, **planning automatique sans conflit**, PDF et **suppression de planning**, séances et validation des heures, présences, notes, documents pédagogiques, paiements et reçus (QR code), impayés et relances, dépenses, **état de caisse PDF**, **location des salles PDF**, **salaires au prorata des heures PDF**, messages aux parents (application, SMS, WhatsApp), comptes, journal d'audit, sauvegardes |
+| **Administration** | `/admin` | Console bleu nuit et or, menu latéral, palette de commandes `Ctrl + K` | Paramètres du centre (nom, logo, bandeau PDF, horaires), classes, matières, salles et tarifs, élèves et parents (import Excel/CSV), encadreurs et comptes d'accès, attributions, **planning automatique sans conflit**, PDF et **suppression de planning**, séances et validation des heures, présences, notes, documents pédagogiques, paiements et reçus (QR code), impayés et relances, dépenses, **état de caisse PDF**, **location des salles PDF** (ajout et suppression de dates : séances, durée, tarif par heure), **salaires au prorata des heures PDF**, messages aux parents (application, SMS, WhatsApp), comptes, journal d'audit, sauvegardes |
 | **Encadreur** | `/encadreur` | Espace de travail bleu roi, barre d'onglets mobile | Séances du jour (démarrer / terminer, chronomètre), appel tactile, contenu de séance, dépôt des fiches de TD (PDF), évaluations et notes, progression des élèves et **état de suivi PDF**, envoi du suivi au parent, heures et estimation de salaire, messages (effacement des messages lus) |
 | **Parent** | `/parent` | Application familiale claire et dorée | Planning de l'enfant, détail des séances (encadreur, heures de début et de fin, contenu, travail à faire), messages, **état de suivi PDF**, notes et assiduité, paiements et reçus, **effacement des messages lus** |
 | **Site public** | `/` | Vitrine SVTC, un seul appel à l'action | « **Inscrire mon enfant** » : demande d'inscription en ligne validée et protégée contre le spam, traitée dans l'administration (demandes, inscription en un clic) ; **mesure d'audience sans cookie** ; page 404 personnalisée ; **confidentialité** et **conditions générales** ; **bandeau de consentement aux cookies** ; HTTPS forcé ; sitemap, robots.txt, favicon, aperçus de partage |
@@ -52,8 +52,8 @@ npm run seed:demo -- --reset
 ## Tests
 
 ```bash
-npm test              # 11 tests unitaires : salaires, location, soldes, planning, montants en lettres, dates
-npm run test:e2e      # 43 tests de bout en bout (Playwright) : site public, admin, encadreur, parent et sécurité
+npm test              # 12 tests unitaires : salaires, location, soldes, planning, montants en lettres, dates
+npm run test:e2e      # 46 tests de bout en bout (Playwright) : site public, admin, encadreur, parent et sécurité
 npm run test:qualite  # liens cassés, accessibilité WCAG 2.1 AA (axe-core) et affichage à 360 px sur toutes les pages
 npm run test:secrets  # aucune clé secrète dans le code envoyé au navigateur (après npm run build)
 ```

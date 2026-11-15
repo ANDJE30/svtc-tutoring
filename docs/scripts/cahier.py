@@ -22,7 +22,7 @@ D.cover(
         ('Maître d’ouvrage', 'SILICON VALLEY TRAINING CENTER (SVTC) — Centre Éducatif TYRANNUS, Biyem-Assi Lac, Yaoundé (Cameroun)'),
         ('Projet', 'SVTC Répétitions : planning, séances, présences, notes, suivi des élèves, paiements, caisse, location des salles, salaires et communication avec les parents'),
         ('Document', 'Cahier des charges : besoins, spécifications fonctionnelles et techniques, conception UML, sécurité, hébergement, recette'),
-        ('Version', '1.2 — mises à jour majeures : effacement des messages lus, suppression de planning, conformité web (CGU, cookies, HTTPS), base de données conservée'),
+        ('Version', '1.3 — mise à jour majeure : ajustement de l’état de location des salles (ajout et suppression de dates), base de données conservée'),
         ('Date', today),
         ('Adresse prévue', f'{URL} (hébergement Render, service « svtc-tutoring »)'),
         ('Rédaction', 'Équipe de développement full stack'),
@@ -135,6 +135,7 @@ EF = [
         ('EF-33', 'Dépenses +', "Saisie des sorties de caisse par catégorie ; les salaires et la location réglés y sont inscrits automatiquement.", 'S'),
         ('EF-34', 'État de caisse PDF', "Journal chronologique des recettes et dépenses avec soldes d'ouverture et de clôture, répartition par mode et par catégorie.", 'M'),
         ('EF-35', 'État de location des salles PDF', "Heures d'occupation par salle et par jour, tarif du mercredi et du dimanche, montant par salle et total, règlement enregistré en dépense.", 'M'),
+        ('EF-37', 'Ajuster l’état de location +', "Ajout d'une journée de location : salle, date, nombre de séances, durée (heures et minutes), tarif par heure (proposé selon la salle et le jour, modifiable) et motif, avec calcul immédiat du montant ; suppression d'une ligne : une journée ajoutée est effacée, une journée calculée à partir des séances est retirée de l'état et peut être rétablie ; lignes ajoutées signalées à l'écran et dans le PDF ; mois réglé verrouillé.", 'M'),
         ('EF-36', 'État des salaires PDF', "Par encadreur : heures prévues, heures effectuées, pourcentage, montant dû, primes, retenues, net à payer, émargement ; paiement unitaire ou groupé.", 'M'),
     ]),
     ('3.5 Administrateur — communication, pilotage et sécurité', [
@@ -212,6 +213,8 @@ D.table(['Réf.', 'Règle'], [
     ['RG-19', "Seuls les messages **déjà lus** peuvent être effacés par leur destinataire ; ils disparaissent de sa boîte de réception mais restent dans l'historique d'envoi de l'administration (nombre de destinataires et de lectures inchangé)."],
     ['RG-20', "La suppression d'un planning n'efface jamais une séance commencée, terminée ou ayant fait l'objet d'un appel : les heures des encadreurs, les salaires et la location restent calculables."],
     ['RG-21', "Une mise à jour de l'application conserve la base de données : seules des migrations additives sont appliquées automatiquement ; une migration qui supprimerait des données bloque la mise à jour."],
+    ['RG-22', "**Ajustements de la location** : une journée ajoutée vaut durée × tarif par heure saisis (ex. 3 h 30 × 1 500 FCFA = 5 250 FCFA) ; une journée calculée retirée n'est plus facturée mais reste rétablissable ; le total du mois, le règlement et le PDF tiennent compte de ces ajustements."],
+    ['RG-23', "Un mois dont la location est **réglée** est verrouillé : aucune date ne peut y être ajoutée ou supprimée. Pour le corriger, il faut d'abord supprimer la dépense « Location des salles — mois » (le règlement est alors annulé)."],
 ], widths=[1.4, 15.2], caption='Règles de gestion', font=8.6)
 D.figure(u('09_activite_salaires.png'), "Diagramme d'activité — calcul des salaires au pourcentage des heures faites", max_h=14)
 D.figure(u('10_etats_seance.png'), "Diagramme d'états — cycle de vie d'une séance", max_h=11)
@@ -236,11 +239,12 @@ D.table(['Table', 'Rôle'], [
     ['seances, attendances', 'Séances datées (prévu / réel / statut / validation), appel des élèves'],
     ['evaluations, grades', 'Évaluations (barème, coefficient) et notes'],
     ['documents, files', 'Fiches de TD et documents (métadonnées), fichiers binaires (PDF, images)'],
+    ['rent_entries', 'Ajustements de la location des salles : journées ajoutées (date, séances, durée, tarif) et journées retirées'],
     ['payments, expenses, salary_slips, rent_settlements', 'Paiements, dépenses, bulletins de salaire, règlements de location'],
     ['messages, message_recipients', 'Messages, destinataires personnalisés, statut SMS, lecture, effacement par le destinataire'],
     ['audit_logs, verifications', 'Journal d’audit, codes de vérification des documents (QR)'],
     ['enrollment_requests, page_views', 'Demandes d’inscription du site public (statut, traitement), mesure d’audience anonyme'],
-], widths=[6.0, 10.6], caption='Tables de la base de données (29 tables)')
+], widths=[6.0, 10.6], caption='Tables de la base de données (30 tables)')
 D.h2('5.3 Diagrammes de séquence')
 D.figure(u('05_sequence_connexion.png'), 'Séquence — connexion sécurisée', max_h=13)
 D.figure(u('06_sequence_seance.png'), "Séquence — déroulement d'une séance, de l'appel à la paie et au suivi parent", max_h=13)
@@ -370,7 +374,7 @@ D.table(['Document', 'Contenu', 'Accès'], [
     ['Planning de travail d’une classe (PDF)', 'Créneaux hebdomadaires et séances datées des 5 semaines suivantes', 'Administrateur, encadreur, parent'],
     ['Planning des séances du mois (PDF)', 'Toutes les séances datées avec statut et heures réalisées', 'Administrateur'],
     ['État de paiement des salaires (PDF)', 'Heures, pourcentage, montant dû, primes, retenues, net, émargement, montant en lettres', 'Administrateur'],
-    ['État de location des salles (PDF)', 'Détail par salle et date, tarifs, total en lettres, signatures', 'Administrateur'],
+    ['État de location des salles (PDF)', 'Détail par salle et date, tarifs, journées ajoutées signalées (*), journées retirées, total en lettres, signatures', 'Administrateur'],
     ['État de caisse (PDF)', 'Soldes, journal, répartitions, solde arrêté en lettres', 'Administrateur'],
     ['Reçu de paiement (PDF, A5)', 'Montant en chiffres et en lettres, solde restant, QR code d’authenticité', 'Administrateur, parent'],
     ['État de suivi de l’apprenant (PDF)', 'Assiduité, moyennes, évaluations, absences, appréciation, QR code', 'Administrateur, encadreur, parent'],
@@ -383,13 +387,13 @@ D.figures_row([c('pdf_salaires.png'), c('pdf_recu.png'), c('pdf_suivi.png')], '�
 D.h1('10. Recette et tests')
 D.p("La recette s'appuie sur des tests automatisés exécutés avant chaque livraison, en développement et sur la version de production.")
 D.table(['Campagne', 'Contenu', 'Résultat'], [
-    ['Tests unitaires (11)', 'Salaire au prorata et horaire, heures plafonnées, location mercredi/dimanche, montant dû et affectation des paiements, assiduité, moyenne pondérée, planning sans conflit, détection des conflits, montants en lettres, formats camerounais, fuseau horaire', '**11/11 réussis**'],
-    ['Tests de bout en bout (43)', 'Site public (smartphone) : un seul appel à l’action, validation du formulaire, robot ignoré, demande envoyée, page 404, robots.txt, sitemap, conditions générales, favicon, HTTPS forcé, bandeau cookies (refus respecté, choix modifiable), audience sans cookie. Messages : effacement d’un message lu puis de tous, historique admin conservé. Reçu : libellé « Espèces » vérifié dans le PDF. Planning : suppression totale, séances réalisées conservées. Administrateur : demande d’inscription transformée en élève, audience, paramètres, classe, inscription, compte parent, paiement et reçu, séance, message, salaires, location, document, caisse. Encadreur (smartphone) : démarrage, appel, fin, dépôt PDF et refus d’un faux PDF, notes (refus d’une note hors barème), envoi du suivi. Parent : connexion par téléphone, messages, reçu et suivi. Sécurité : cloisonnement des espaces, refus d’accès aux PDF d’autrui, verrouillage, mauvais espace, en-têtes, accès anonyme', '**43/43 réussis**'],
+    ['Tests unitaires (12)', 'Salaire au prorata et horaire, heures plafonnées, location mercredi/dimanche, montant dû et affectation des paiements, assiduité, moyenne pondérée, planning sans conflit, détection des conflits, montants en lettres, formats camerounais, fuseau horaire', '**12/12 réussis**'],
+    ['Tests de bout en bout (46)', 'Location des salles : ajout d’une date (3 h 30 × 1 500 FCFA), ligne signalée à l’écran et dans le PDF, retrait puis rétablissement d’une date calculée, suppression d’une date ajoutée, mois réglé verrouillé. Site public (smartphone) : un seul appel à l’action, validation du formulaire, robot ignoré, demande envoyée, page 404, robots.txt, sitemap, conditions générales, favicon, HTTPS forcé, bandeau cookies (refus respecté, choix modifiable), audience sans cookie. Messages : effacement d’un message lu puis de tous, historique admin conservé. Reçu : libellé « Espèces » vérifié dans le PDF. Planning : suppression totale, séances réalisées conservées. Administrateur : demande d’inscription transformée en élève, audience, paramètres, classe, inscription, compte parent, paiement et reçu, séance, message, salaires, location, document, caisse. Encadreur (smartphone) : démarrage, appel, fin, dépôt PDF et refus d’un faux PDF, notes (refus d’une note hors barème), envoi du suivi. Parent : connexion par téléphone, messages, reçu et suivi. Sécurité : cloisonnement des espaces, refus d’accès aux PDF d’autrui, verrouillage, mauvais espace, en-têtes, accès anonyme', '**46/46 réussis**'],
     ['Parcours complet des pages', 'Toutes les pages des trois espaces, sans erreur serveur ni erreur JavaScript', '**Aucune erreur**'],
     ['Contrôle qualité automatisé', '78 pages et 28 ressources des quatre espaces : liens cassés, accessibilité WCAG 2.1 AA (axe-core, bandeau cookies compris), affichage à 360 px', '**0 défaut**'],
     ['Performance (Lighthouse mobile)', 'Accueil, conditions, confidentialité, choix de l’espace (bandeau cookies affiché)', '**93 à 97 / 100**'],
     ['Secrets dans le front-end', 'Analyse des fichiers envoyés au navigateur (valeurs des variables secrètes, adresses de base, clés)', '**Aucun secret**'],
-    ['Mise à jour sans perte de données', 'Construction Render complète sur une copie remplie et modifiée de la base, puis migration 0002 (ajout de colonne)', '**Données identiques**'],
+    ['Mise à jour sans perte de données', 'Construction Render complète sur une copie remplie et modifiée de la base ; migrations additives 0002 (colonne) et 0003 (table rent_entries)', '**Données identiques**'],
     ['Build de production', 'Compilation TypeScript stricte et optimisation Next.js', '**Réussi**'],
 ], widths=[3.6, 10.6, 2.4], caption='Résultats de la recette', font=8.5)
 

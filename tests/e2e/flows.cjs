@@ -283,6 +283,60 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
     await admin.getByRole('button', { name: 'Marquer comme réglé' }).click();
     await toast(admin, /Location de octobre 2026 réglée/);
   });
+  await step('location : ajout d’une date (séances, durée, tarif par heure)', async () => {
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    await admin.getByRole('button', { name: 'Ajouter une date' }).click();
+    const dlg = admin.locator('dialog[open]');
+    await dlg.locator('select[name=roomId]').selectOption({ label: 'Salle A' });
+    await dlg.locator('input[name=date]').fill('2026-11-21');
+    await dlg.locator('input[name=seances]').fill('2');
+    await dlg.locator('input[name=heures]').fill('3');
+    await dlg.locator('select[name=minutes]').selectOption('30');
+    await dlg.locator('input[name=rate]').fill('1500');
+    await dlg.locator('input[name=label]').fill('Séance de rattrapage TESTEUR');
+    assert(/5\s?250 FCFA/.test(await dlg.innerText()), 'montant prévisionnel attendu : 5 250 FCFA');
+    await dlg.getByRole('button', { name: /Ajouter à l'état de location/ }).click();
+    await toast(admin, /ajoutée à l’état de location/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    const row = admin.locator('tr', { hasText: '21/11/2026' });
+    await row.waitFor({ timeout: 15000 });
+    assert(/Ajout/.test(await row.innerText()) && /Séance de rattrapage TESTEUR/.test(await row.innerText()), 'ligne ajoutée non signalée');
+    const pdf = await admin.request.get(`${BASE}/api/pdf/location?mois=2026-11`);
+    assert(pdf.ok(), 'état de location PDF');
+    try {
+      const f = path.join(os.tmpdir(), `location-${Date.now()}.pdf`);
+      fs.writeFileSync(f, await pdf.body());
+      const text = execFileSync('pdftotext', ['-layout', f, '-'], { encoding: 'utf8' });
+      fs.unlinkSync(f);
+      assert(/21\/11\/2026 \*/.test(text) && /Journée ajoutée/.test(text), 'ligne ajoutée absente du PDF');
+    } catch (e) {
+      if (!/ENOENT/.test(String(e.message))) throw e;
+    }
+  });
+  await step('location : suppression puis rétablissement d’une date calculée, suppression d’une date ajoutée', async () => {
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    const computedRow = admin.locator('section', { hasText: 'Salle A' }).locator('tbody tr').filter({ hasNotText: 'Ajout' }).filter({ hasNotText: 'Total' }).first();
+    const date = (await computedRow.locator('td').first().innerText()).match(/\d{2}\/\d{2}\/\d{4}/)[0];
+    await computedRow.getByRole('button', { name: /Supprimer la ligne/ }).click();
+    await toast(admin, /retirée de l’état de location/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    const ex = admin.locator('section', { hasText: 'Dates retirées de l’état' });
+    await ex.waitFor({ timeout: 15000 });
+    assert(new RegExp(date.replace(/\//g, '\\/')).test(await ex.innerText()), 'date retirée non listée');
+    await ex.getByRole('button', { name: /Rétablir/ }).first().click();
+    await toast(admin, /rétablie/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    await admin.locator('tr', { hasText: '21/11/2026' }).getByRole('button', { name: /Supprimer la ligne/ }).click();
+    await toast(admin, /supprimée de l’état de location/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-11`);
+    assert(!(await admin.locator('tr', { hasText: '21/11/2026' }).count()), 'la date ajoutée devrait être supprimée');
+    assert(!(await admin.locator('section', { hasText: 'Dates retirées de l’état' }).count()), 'aucune date ne devrait rester retirée');
+  });
+  await step('location : mois réglé verrouillé', async () => {
+    await admin.goto(`${BASE}/admin/location?mois=2026-10`);
+    assert(!(await admin.getByRole('button', { name: 'Ajouter une date' }).count()), 'ajout possible sur un mois réglé');
+    assert(/état est verrouillé/.test(await admin.locator('main').innerText()), 'message de verrouillage absent');
+  });
   await step('approbation d’un document pédagogique', async () => {
     await admin.goto(`${BASE}/admin/documents?statut=SOUMIS`);
     await admin.getByRole('button', { name: /Examiner/ }).first().click();

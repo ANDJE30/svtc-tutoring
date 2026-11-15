@@ -344,6 +344,24 @@ export const rentSettlements = pgTable('rent_settlements', {
   createdAt: createdAt(),
 });
 
+/**
+ * Ajustements de la location des salles saisis par l'administration :
+ * AJOUT = journée de location ajoutée (date, séances, durée, tarif par heure) ;
+ * EXCLUSION = journée calculée à partir des séances retirée de l'état (salle non facturée ce jour-là).
+ */
+export const rentEntries = pgTable('rent_entries', {
+  id: serial('id').primaryKey(),
+  kind: text('kind').notNull().default('AJOUT'), // AJOUT | EXCLUSION
+  roomId: integer('room_id').notNull().references(() => rooms.id, { onDelete: 'cascade' }),
+  date: date('date').notNull(),
+  seances: integer('seances').notNull().default(0),
+  minutes: integer('minutes').notNull().default(0),
+  rate: integer('rate').notNull().default(0), // FCFA par heure
+  label: text('label'),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+}, (t) => [index('rent_entries_date_idx').on(t.date), index('rent_entries_room_idx').on(t.roomId, t.date)]);
+
 // ---------------------------------------------------------------- Communication
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),

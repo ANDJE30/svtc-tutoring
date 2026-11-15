@@ -1,5 +1,5 @@
 // Calculs métier purs (sans base de données) — couverts par les tests unitaires.
-import { slotMinutes, minutesBetween, schoolMonthToPeriod, toMinutes } from './time';
+import { slotMinutes, minutesBetween, schoolMonthToPeriod, toMinutes, dayOfWeek } from './time';
 
 // ---------------------------------------------------------------- Heures effectuées
 export type SeanceLike = {
@@ -51,7 +51,11 @@ export function computeSalary(i: SalaryInput) {
 
 // ---------------------------------------------------------------- Location des salles
 export type RentSeance = SeanceLike & { date: string; dayOfWeek: number; roomId: number | null };
-export type RentLine = { roomId: number; date: string; dayOfWeek: number; minutes: number; rate: number; amount: number; seances: number };
+export type RentLine = {
+  roomId: number; date: string; dayOfWeek: number; minutes: number; rate: number; amount: number; seances: number;
+  source?: 'SEANCES' | 'MANUEL'; entryId?: number; label?: string | null;
+};
+export type RentEntry = { id: number; kind: string; roomId: number; date: string; seances: number; minutes: number; rate: number; label: string | null };
 
 export function computeRent(
   list: RentSeance[],
@@ -81,6 +85,30 @@ export function computeRent(
   const lines = [...map.values()];
   for (const l of lines) l.amount = Math.round((l.minutes / 60) * l.rate);
   return lines.sort((a, b) => (a.date === b.date ? a.roomId - b.roomId : a.date < b.date ? -1 : 1));
+}
+
+/**
+ * Applique les ajustements de l'administration aux lignes calculées à partir des séances :
+ * les journées exclues sont retirées (et renvoyées à part pour pouvoir être rétablies), les journées ajoutées sont insérées.
+ */
+export function applyRentEntries(computed: RentLine[], entries: RentEntry[]): { lines: RentLine[]; excluded: (RentLine & { entryId: number })[] } {
+  const exclusions = entries.filter((e) => e.kind === 'EXCLUSION');
+  const exKey = new Map(exclusions.map((e) => [`${e.roomId}|${e.date}`, e.id]));
+  const excluded: (RentLine & { entryId: number })[] = [];
+  const kept: RentLine[] = [];
+  for (const l of computed) {
+    const id = exKey.get(`${l.roomId}|${l.date}`);
+    if (id !== undefined) excluded.push({ ...l, source: 'SEANCES', entryId: id });
+    else kept.push({ ...l, source: 'SEANCES' });
+  }
+  const added: RentLine[] = entries
+    .filter((e) => e.kind === 'AJOUT')
+    .map((e) => ({
+      roomId: e.roomId, date: e.date, dayOfWeek: dayOfWeek(e.date), minutes: e.minutes, rate: e.rate,
+      amount: Math.round((e.minutes / 60) * e.rate), seances: e.seances, source: 'MANUEL', entryId: e.id, label: e.label,
+    }));
+  const lines = [...kept, ...added].sort((a, b) => (a.date === b.date ? a.roomId - b.roomId || (a.source === 'MANUEL' ? 1 : -1) : a.date < b.date ? -1 : 1));
+  return { lines, excluded };
 }
 
 // ---------------------------------------------------------------- Frais des élèves

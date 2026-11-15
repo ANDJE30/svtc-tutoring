@@ -12,6 +12,8 @@ erDiagram
   PAYMENTS ||--o| VERIFICATIONS : "code QR"
   ENROLLMENT_REQUESTS |o--o| STUDENTS : "devient"
   USERS ||--o{ ENROLLMENT_REQUESTS : "traite"
+  ROOMS ||--o{ RENT_ENTRIES : "ajustée par"
+  USERS ||--o{ RENT_ENTRIES : "saisit"
   PAYMENTS {
     int id PK
     text receipt_no UK
@@ -57,4 +59,19 @@ erDiagram
     text visitor
     text device
     text source
+  }
+  RENT_ENTRIES {
+    int id PK
+    text kind
+    int room_id FK
+    date date
+    int seances
+    int minutes
+    int rate
+    text label
+  }
+  ROOMS {
+    int id PK
+    text name UK
+    jsonb rates
   }

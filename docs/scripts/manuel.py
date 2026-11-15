@@ -22,7 +22,7 @@ D.cover(
         ('Structure', 'SILICON VALLEY TRAINING CENTER — Centre Éducatif TYRANNUS, Biyem-Assi Lac, Yaoundé'),
         ('Public', 'Administration du centre, encadreurs, parents d’élèves'),
         ('Appareils', 'Ordinateur, tablette et smartphone (navigateur récent ou application installée)'),
-        ('Version', f'1.2 — {today}'),
+        ('Version', f'1.3 — {today}'),
         ('Assistance', '657 513 641 · 695 840 597 · 697 760 779'),
     ],
     motto="Comprendre. **Pratiquer.** Maîtriser.",
@@ -256,7 +256,21 @@ D.figures_row([c('29_admin_caisse.png'), c('pdf_caisse.png')], 'État de caisse 
 D.h2('5.4 Location des salles')
 D.p("Menu **Location des salles** ▸ choisissez le mois. Le calcul reprend chaque journée d’occupation de chaque salle : heures × tarif du jour "
     "(mercredi 500 FCFA/h, dimanche 1000 FCFA/h pour les salles A et B). **État de location (PDF)** produit le document ; **Marquer comme réglé** enregistre le paiement en dépense.")
-D.figures_row([c('30_admin_location.png'), c('pdf_location.png')], 'Location des salles à l’écran et en PDF', width=8.0)
+D.figure(c('30_admin_location.png'), 'Location des salles : total du mois, heures, détail par salle et par date', max_h=10)
+D.p("**Ajouter une date.** Pour une journée qui ne figure pas dans le calcul (séance de rattrapage hors planning, examen blanc, réunion des parents…) :")
+D.steps([
+    'Choisissez le mois puis cliquez sur **Ajouter une date**.',
+    'Indiquez la **salle**, la **date**, le **nombre de séances** et la **durée** de location (heures et minutes).',
+    'Le **tarif par heure** est proposé selon la salle et le jour (ex. 500 FCFA le mercredi, 1 000 FCFA le dimanche) ; vous pouvez le modifier. Si aucun tarif n’est défini pour ce jour dans **Salles**, saisissez-le.',
+    'Ajoutez éventuellement un **motif**, vérifiez le montant calculé (ex. 3 h 30 × 1 500 FCFA = 5 250 FCFA) puis cliquez sur **Ajouter à l’état de location**.',
+])
+D.figure(c('30b_admin_location_ajout.png'), 'Ajouter une date : salle, date, séances, durée et tarif par heure', max_h=9.5)
+D.p("**Supprimer une ligne.** Cliquez sur la **corbeille** au bout de la ligne puis confirmez. Une journée **ajoutée** (repérée par l’étiquette « Ajout » et son motif) est effacée. "
+    "Une journée **calculée à partir des séances** est retirée de l’état : elle apparaît dans le bloc **Dates retirées de l’état** avec son montant barré et le bouton **Rétablir**. "
+    "Le total du mois, le bouton **Marquer comme réglé** et le PDF tiennent compte de ces ajustements ; dans le PDF, les journées ajoutées sont marquées d’un astérisque (*) avec leur motif.")
+D.note("**Mois réglé = état verrouillé.** Une fois la location d’un mois marquée comme réglée, on ne peut plus y ajouter ni supprimer de date. "
+       "Pour corriger, supprimez d’abord la dépense « Location des salles — mois » dans **Dépenses** : le règlement est annulé et l’état redevient modifiable.", 'warn')
+D.figure(c('pdf_location.png'), 'État de location des salles (PDF) avec une journée ajoutée', max_h=12)
 D.h2('5.5 Salaires des encadreurs')
 D.p("Menu **Salaires des encadreurs** ▸ choisissez le mois. Pour chaque encadreur : heures prévues, heures effectuées (pointées), **pourcentage des heures faites**, "
     "montant dû (= salaire de référence × pourcentage), prime, retenue et **net à payer**.")
@@ -406,6 +420,7 @@ D.table(['Question', 'Réponse'], [
     ['Mes propres visites ne sont pas comptées.', 'Seules les visites des personnes qui ont accepté la mesure d’audience sont comptées ; les navigateurs réglés sur « Ne pas suivre » et les robots sont exclus ; chaque visiteur n’est compté qu’une fois par jour.'],
     ['Comment vider ma boîte de messages ?', 'Marquez les messages comme lus, puis « Effacer » sur un message ou « Effacer les messages lus » pour tous. Les messages non lus ne peuvent pas être effacés.'],
     ['Comment changer mon choix sur les cookies ?', 'Cliquez sur « Gérer les cookies » en bas de la page d’accueil ou de la page de connexion, puis Accepter ou Refuser.'],
+    ['Une journée de location manque ou ne doit pas être facturée.', 'Location des salles ▸ « Ajouter une date » (salle, date, séances, durée, tarif par heure), ou corbeille sur la ligne à retirer ; une ligne calculée retirée se rétablit avec « Rétablir ».'],
     ['J’ai supprimé un planning par erreur.', 'Les séances réalisées et la paie sont intactes. Relancez « Générer automatiquement » puis « Générer les séances » pour la période voulue.'],
     ['Un parent a plusieurs enfants.', 'Inscrivez chaque enfant avec le même numéro de téléphone du parent : un seul compte parent, avec sélection de l’enfant.'],
 ], widths=[5.0, 11.6], caption='Questions fréquentes', font=8.6)
