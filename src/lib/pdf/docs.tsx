@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { timeslots, payments, students, classes, users, seances, verifications, attendances } from '@/db/schema';
 import { getCurrentYear, getSettings } from '../settings';
 import { balances, refData, seancesWithNames, studentProgress, studentsOfYear, tutorName } from '../queries';
-import { computePayroll, computeRentReport, cashJournal } from '../payroll';
+import { computePayroll, computeRentReport, cashJournal, rentPaid } from '../payroll';
 import { appreciation, attendanceStats } from '../calc';
 import { dateFr, dateLong, dateTimeFr, duration, hm, hours, money, num, pct, periodLabel, phoneFr, score, timeOf } from '../format';
 import { DAYS, EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYMENT_TYPES, SALARY_MODES, SEANCE_STATUS, ATTENDANCE_STATUS, EVALUATION_TYPES } from '../constants';
@@ -141,7 +141,8 @@ export async function salairesPdf(period: string) {
 export async function locationPdf(period: string) {
   const st = await getSettings();
   const { start, end } = periodBounds(period);
-  const rep = await computeRentReport(start, end);
+  const [rep, paid] = await Promise.all([computeRentReport(start, end), rentPaid(period)]);
+  const gap = paid.total > 0 ? rep.total - paid.total : 0;
   const basis = { PLANNED: 'durée prévue des séances tenues', ACTUAL: 'durée réelle des séances', WINDOW: 'plage complète de chaque journée de séance' }[rep.basis];
   return toPdf(
     <SvtcDoc settings={st} bannerOverride={await banner(st)} title={`État de location des salles — ${periodLabel(period)}`} subtitle={`Salles du ${st.identity.host} · base de calcul : ${basis}`}>
@@ -171,6 +172,14 @@ export async function locationPdf(period: string) {
           </Text>
         )}
         <Text style={{ marginTop: 6, fontWeight: 600 }}>Arrêté le présent état à la somme de : {amountInWords(rep.total)}.</Text>
+        {paid.total > 0 && (
+          <Text style={{ marginTop: 4 }}>
+            Montant déjà réglé : <Text style={{ fontWeight: 600 }}>{money(paid.total)}</Text>
+            {gap > 0 && <Text> — complément à régler : <Text style={{ fontWeight: 700, color: C.red }}>{money(gap)}</Text></Text>}
+            {gap < 0 && <Text> — trop-payé : <Text style={{ fontWeight: 700 }}>{money(-gap)}</Text></Text>}
+            {gap === 0 && <Text> — état soldé.</Text>}
+          </Text>
+        )}
       </View>
       <Signatures place={place(st)} left={`Pour le ${st.identity.host}`} right={signer(st)} />
     </SvtcDoc>,

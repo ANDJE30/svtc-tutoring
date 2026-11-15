@@ -22,7 +22,7 @@ D.cover(
         ('Structure', 'SILICON VALLEY TRAINING CENTER — Centre Éducatif TYRANNUS, Biyem-Assi Lac, Yaoundé'),
         ('Public', 'Administration du centre, encadreurs, parents d’élèves'),
         ('Appareils', 'Ordinateur, tablette et smartphone (navigateur récent ou application installée)'),
-        ('Version', f'1.3 — {today}'),
+        ('Version', f'1.4 — {today}'),
         ('Assistance', '657 513 641 · 695 840 597 · 697 760 779'),
     ],
     motto="Comprendre. **Pratiquer.** Maîtriser.",
@@ -268,8 +268,16 @@ D.figure(c('30b_admin_location_ajout.png'), 'Ajouter une date : salle, date, sé
 D.p("**Supprimer une ligne.** Cliquez sur la **corbeille** au bout de la ligne puis confirmez. Une journée **ajoutée** (repérée par l’étiquette « Ajout » et son motif) est effacée. "
     "Une journée **calculée à partir des séances** est retirée de l’état : elle apparaît dans le bloc **Dates retirées de l’état** avec son montant barré et le bouton **Rétablir**. "
     "Le total du mois, le bouton **Marquer comme réglé** et le PDF tiennent compte de ces ajustements ; dans le PDF, les journées ajoutées sont marquées d’un astérisque (*) avec leur motif.")
-D.note("**Mois réglé = état verrouillé.** Une fois la location d’un mois marquée comme réglée, on ne peut plus y ajouter ni supprimer de date. "
-       "Pour corriger, supprimez d’abord la dépense « Location des salles — mois » dans **Dépenses** : le règlement est annulé et l’état redevient modifiable.", 'warn')
+D.p("**Mois antérieurs.** Les ajouts et suppressions de dates sont possibles pour **n’importe quel mois**, y compris les mois passés : utilisez les boutons "
+    "**‹ mois précédent** et **mois suivant ›** (ou le sélecteur de mois puis **Afficher**), puis **Ajouter une date** ou la corbeille. Le bouton **Mois en cours** ramène au mois actuel.")
+D.p("**Mois déjà réglé.** Si la location du mois a déjà été marquée comme réglée, vous pouvez quand même ajouter ou supprimer des dates. L’application compare alors le nouvel état au montant déjà réglé :")
+D.bullets([
+    ('Complément à régler : ', 'l’état a augmenté (ex. une réunion ajoutée : + 2 000 FCFA). Une fois le paiement effectué, cliquez sur **Régler le complément** : une dépense « Location des salles — complément » est créée à la date du jour.'),
+    ('Trop-payé : ', 'l’état a diminué (une date retirée). Le montant à récupérer, ou à déduire d’un prochain règlement, est indiqué.'),
+    ('État conforme : ', 'le montant réglé correspond exactement à l’état.'),
+])
+D.p("Les dépenses déjà enregistrées et l’état de caisse des mois passés ne sont jamais modifiés. L’état de location PDF indique le montant déjà réglé et le complément ou le trop-payé.")
+D.figure(c('30c_admin_location_mois_regle.png'), 'Mois antérieur déjà réglé : date ajoutée et complément à régler', max_h=10)
 D.figure(c('pdf_location.png'), 'État de location des salles (PDF) avec une journée ajoutée', max_h=12)
 D.h2('5.5 Salaires des encadreurs')
 D.p("Menu **Salaires des encadreurs** ▸ choisissez le mois. Pour chaque encadreur : heures prévues, heures effectuées (pointées), **pourcentage des heures faites**, "
@@ -420,7 +428,8 @@ D.table(['Question', 'Réponse'], [
     ['Mes propres visites ne sont pas comptées.', 'Seules les visites des personnes qui ont accepté la mesure d’audience sont comptées ; les navigateurs réglés sur « Ne pas suivre » et les robots sont exclus ; chaque visiteur n’est compté qu’une fois par jour.'],
     ['Comment vider ma boîte de messages ?', 'Marquez les messages comme lus, puis « Effacer » sur un message ou « Effacer les messages lus » pour tous. Les messages non lus ne peuvent pas être effacés.'],
     ['Comment changer mon choix sur les cookies ?', 'Cliquez sur « Gérer les cookies » en bas de la page d’accueil ou de la page de connexion, puis Accepter ou Refuser.'],
-    ['Une journée de location manque ou ne doit pas être facturée.', 'Location des salles ▸ « Ajouter une date » (salle, date, séances, durée, tarif par heure), ou corbeille sur la ligne à retirer ; une ligne calculée retirée se rétablit avec « Rétablir ».'],
+    ['Une journée de location manque ou ne doit pas être facturée.', 'Location des salles ▸ choisissez le mois (même un mois passé) ▸ « Ajouter une date » (salle, date, séances, durée, tarif par heure), ou corbeille sur la ligne à retirer ; une ligne calculée retirée se rétablit avec « Rétablir ».'],
+    ['J’ai ajouté une date sur un mois déjà réglé.', 'La page indique le complément à régler : après paiement, cliquez sur « Régler le complément ». Si vous avez retiré une date, le trop-payé est indiqué.'],
     ['J’ai supprimé un planning par erreur.', 'Les séances réalisées et la paie sont intactes. Relancez « Générer automatiquement » puis « Générer les séances » pour la période voulue.'],
     ['Un parent a plusieurs enfants.', 'Inscrivez chaque enfant avec le même numéro de téléphone du parent : un seul compte parent, avec sélection de l’enfant.'],
 ], widths=[5.0, 11.6], caption='Questions fréquentes', font=8.6)

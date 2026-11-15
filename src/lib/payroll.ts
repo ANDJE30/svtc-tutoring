@@ -70,6 +70,19 @@ export async function rentSettlement(period: string) {
   return r ?? null;
 }
 
+/**
+ * Montant déjà réglé pour la location d'un mois : somme des dépenses « location » de ce mois
+ * (règlement initial et compléments éventuels après ajout de dates).
+ */
+export async function rentPaid(period: string) {
+  const list = await db
+    .select({ id: expenses.id, amount: expenses.amount, date: expenses.date, label: expenses.label })
+    .from(expenses)
+    .where(and(eq(expenses.sourceType, 'LOCATION'), eq(expenses.sourceRef, period)))
+    .orderBy(asc(expenses.date), asc(expenses.id));
+  return { total: list.reduce((a, e) => a + e.amount, 0), expenses: list };
+}
+
 /** Journal de caisse d'une période : solde d'ouverture, recettes, dépenses, solde de clôture. */
 export async function cashJournal(start: string, end: string) {
   const startTs = new Date(`${start}T00:00:00+01:00`);

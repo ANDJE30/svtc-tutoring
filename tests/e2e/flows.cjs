@@ -332,10 +332,44 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
     assert(!(await admin.locator('tr', { hasText: '21/11/2026' }).count()), 'la date ajoutée devrait être supprimée');
     assert(!(await admin.locator('section', { hasText: 'Dates retirées de l’état' }).count()), 'aucune date ne devrait rester retirée');
   });
-  await step('location : mois réglé verrouillé', async () => {
+  await step('location : mois antérieur déjà réglé — ajout d’une date, complément réglé, puis trop-payé', async () => {
     await admin.goto(`${BASE}/admin/location?mois=2026-10`);
-    assert(!(await admin.getByRole('button', { name: 'Ajouter une date' }).count()), 'ajout possible sur un mois réglé');
-    assert(/état est verrouillé/.test(await admin.locator('main').innerText()), 'message de verrouillage absent');
+    assert(await admin.getByRole('link', { name: 'Mois précédent' }).count(), 'navigation vers le mois précédent absente');
+    await admin.getByRole('button', { name: 'Ajouter une date' }).click();
+    const dlg = admin.locator('dialog[open]');
+    await dlg.locator('select[name=roomId]').selectOption({ label: 'Salle A' });
+    await dlg.locator('input[name=date]').fill('2026-10-24');
+    await dlg.locator('input[name=seances]').fill('2');
+    await dlg.locator('input[name=heures]').fill('2');
+    await dlg.locator('input[name=rate]').fill('1000');
+    await dlg.locator('input[name=label]').fill('Réunion des parents TESTEUR');
+    await dlg.getByRole('button', { name: /Ajouter à l'état de location/ }).click();
+    await toast(admin, /ajoutée à l’état de location/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-10`);
+    const octText = await admin.locator('main').innerText();
+    assert(/complément à régler : 2\s?000\sFCFA/.test(octText), `complément à régler non affiché : ${octText.split('\n').filter((l) => /réglé|complément|trop|conforme|TOTAL/i.test(l)).join(' | ')}`);
+    await admin.getByRole('button', { name: /Régler le complément/ }).click();
+    await toast(admin, /Complément de 2\s?000\sFCFA réglé/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-10`);
+    assert(/État conforme au montant réglé/.test(await admin.locator('main').innerText()), 'état non soldé après le complément');
+    await admin.goto(`${BASE}/admin/depenses`);
+    assert(/complément octobre 2026/.test(await admin.locator('main').innerText()), 'dépense de complément absente');
+    await admin.goto(`${BASE}/admin/location?mois=2026-10`);
+    await admin.locator('tr', { hasText: '24/10/2026' }).getByRole('button', { name: /Supprimer la ligne/ }).click();
+    await toast(admin, /supprimée de l’état de location/);
+    await admin.goto(`${BASE}/admin/location?mois=2026-10`);
+    assert(/trop-payé de 2\s?000\sFCFA/.test(await admin.locator('main').innerText()), 'trop-payé non signalé');
+    const pdf = await admin.request.get(`${BASE}/api/pdf/location?mois=2026-10`);
+    assert(pdf.ok(), 'état de location PDF (mois réglé)');
+    try {
+      const f = path.join(os.tmpdir(), `location-oct-${Date.now()}.pdf`);
+      fs.writeFileSync(f, await pdf.body());
+      const text = execFileSync('pdftotext', ['-layout', f, '-'], { encoding: 'utf8' });
+      fs.unlinkSync(f);
+      assert(/Montant déjà réglé/.test(text) && /trop-payé/.test(text), 'situation du règlement absente du PDF');
+    } catch (e) {
+      if (!/ENOENT/.test(String(e.message))) throw e;
+    }
   });
   await step('approbation d’un document pédagogique', async () => {
     await admin.goto(`${BASE}/admin/documents?statut=SOUMIS`);

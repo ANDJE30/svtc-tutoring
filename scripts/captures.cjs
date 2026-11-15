@@ -109,6 +109,23 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala' }).fo
   await shot(a, '28_admin_depenses', '/admin/depenses?du=2026-10-01');
   await shot(a, '29_admin_caisse', '/admin/caisse?du=2026-10-01');
   await shot(a, '30_admin_location', '/admin/location?mois=2026-11');
+  await shot(a, '30c_admin_location_mois_regle', null, { before: async (pg) => {
+    // Mois antérieur déjà réglé, puis une date ajoutée : complément à régler
+    await pg.goto(`${BASE}/admin/location?mois=2026-10`, { waitUntil: 'networkidle' });
+    await pg.getByRole('button', { name: 'Marquer comme réglé' }).click();
+    await pg.locator('[data-sonner-toast]').filter({ hasText: /réglée/ }).first().waitFor();
+    await pg.goto(`${BASE}/admin/location?mois=2026-10`, { waitUntil: 'networkidle' });
+    await pg.getByRole('button', { name: 'Ajouter une date' }).click();
+    const dlg = pg.locator('dialog[open]');
+    await dlg.locator('input[name=date]').fill('2026-10-24');
+    await dlg.locator('input[name=seances]').fill('2');
+    await dlg.locator('input[name=heures]').fill('2');
+    await dlg.locator('input[name=rate]').fill('1000');
+    await dlg.locator('input[name=label]').fill('Réunion des parents');
+    await dlg.getByRole('button', { name: /Ajouter à l'état de location/ }).click();
+    await pg.locator('[data-sonner-toast]').filter({ hasText: /ajoutée/ }).first().waitFor();
+    await pg.goto(`${BASE}/admin/location?mois=2026-10`, { waitUntil: 'networkidle' });
+  }, wait: 500 });
   await shot(a, '30b_admin_location_ajout', '/admin/location?mois=2026-11', { before: async (pg) => {
     await pg.getByRole('button', { name: 'Ajouter une date' }).click();
     const dlg = pg.locator('dialog[open]');

@@ -9,7 +9,7 @@ import { assertRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 import { formObject, safe, UserError, zs, type ActionResult } from '@/lib/action';
 import { getCurrentYear, getSettings } from '@/lib/settings';
-import { computePayroll, computeRentReport } from '@/lib/payroll';
+import { computePayroll, computeRentReport, rentPaid } from '@/lib/payroll';
 import { dayOfWeek, localToDate, nowHM, periodBounds, todayISO } from '@/lib/time';
 import { periodLabel, money, dateFr } from '@/lib/format';
 import { randomCode } from '@/lib/passwords';
@@ -112,7 +112,12 @@ export async function deleteExpense(id: number) {
     if (!e) throw new UserError('Dépense introuvable.');
     await db.transaction(async (tx) => {
       if (e.sourceType === 'SALAIRE') await tx.update(salarySlips).set({ status: 'CALCULE', paidAt: null, expenseId: null }).where(eq(salarySlips.expenseId, id));
-      if (e.sourceType === 'LOCATION') await tx.delete(rentSettlements).where(eq(rentSettlements.expenseId, id));
+      if (e.sourceType === 'LOCATION' && e.sourceRef) {
+        // Règlement du mois recalculé à partir des dépenses de location restantes (règlement initial et compléments)
+        const rest = (await tx.select({ id: expenses.id, amount: expenses.amount }).from(expenses).where(and(eq(expenses.sourceType, 'LOCATION'), eq(expenses.sourceRef, e.sourceRef)))).filter((x) => x.id !== id);
+        if (rest.length === 0) await tx.delete(rentSettlements).where(eq(rentSettlements.period, e.sourceRef));
+        else await tx.update(rentSettlements).set({ amount: rest.reduce((a, x) => a + x.amount, 0), expenseId: rest[0].id }).where(eq(rentSettlements.period, e.sourceRef));
+      } else if (e.sourceType === 'LOCATION') await tx.delete(rentSettlements).where(eq(rentSettlements.expenseId, id));
       await tx.delete(expenses).where(eq(expenses.id, id));
     });
     await audit(me, 'DEPENSE_SUPPRIMEE', { entity: 'depense', entityId: id, details: { amount: e.amount, label: e.label } });
@@ -213,12 +218,13 @@ export async function payRent(period: string) {
 }
 
 // ---------------------------------------------------------------- Location : ajustements (dates ajoutées ou retirées)
-/** Un mois dont la location est réglée est verrouillé : son état ne doit plus changer après le paiement. */
-async function assertRentOpen(date: string) {
+/** Mois de location concerné et indication « déjà réglé » (pour le journal d'audit et le message de retour). */
+async function rentPeriodInfo(date: string) {
   const period = date.slice(0, 7);
   const [paid] = await db.select({ id: rentSettlements.id }).from(rentSettlements).where(eq(rentSettlements.period, period));
-  if (paid) throw new UserError(`La location de ${periodLabel(period)} est déjà réglée : son état est verrouillé. Pour le modifier, supprimez d’abord la dépense « Location des salles — ${periodLabel(period)} » (menu Dépenses).`);
+  return { period, settled: !!paid };
 }
+const settledHint = (i: { period: string; settled: boolean }) => (i.settled ? ` Location de ${periodLabel(i.period)} déjà réglée : la différence est indiquée sur la page (complément à régler ou trop-payé).` : '');
 
 const rentEntrySchema = z.object({
   roomId: zs.id('Salle'),
@@ -240,12 +246,12 @@ export async function addRentEntry(fd: FormData): Promise<ActionResult> {
     if (total > 24 * 60) throw new UserError('La durée ne peut pas dépasser 24 heures.');
     const [room] = await db.select({ id: rooms.id, name: rooms.name }).from(rooms).where(eq(rooms.id, d.roomId));
     if (!room) throw new UserError('Salle introuvable.');
-    await assertRentOpen(d.date);
+    const info = await rentPeriodInfo(d.date);
     const [row] = await db.insert(rentEntries).values({ kind: 'AJOUT', roomId: d.roomId, date: d.date, seances: d.seances, minutes: total, rate: d.rate, label: d.label || null, createdBy: me.id }).returning({ id: rentEntries.id });
     const amount = Math.round((total / 60) * d.rate);
-    await audit(me, 'LOCATION_DATE_AJOUTEE', { entity: 'location', entityId: row.id, details: { salle: room.name, date: d.date, seances: d.seances, minutes: total, tarif: d.rate, montant: amount } });
+    await audit(me, 'LOCATION_DATE_AJOUTEE', { entity: 'location', entityId: row.id, details: { salle: room.name, date: d.date, seances: d.seances, minutes: total, tarif: d.rate, montant: amount, moisRegle: info.settled } });
     refresh(['/admin/location', '/admin/depenses']);
-    return { ok: true, message: `${room.name} — ${dateFr(d.date)} ajoutée à l’état de location (${money(amount)}).` };
+    return { ok: true, message: `${room.name} — ${dateFr(d.date)} ajoutée à l’état de location (${money(amount)}).${settledHint(info)}` };
   });
 }
 
@@ -261,22 +267,22 @@ export async function deleteRentLine(target: { entryId?: number; roomId?: number
       const id = zs.id().parse(f.entryId);
       const [e] = await db.select().from(rentEntries).where(and(eq(rentEntries.id, id), eq(rentEntries.kind, 'AJOUT')));
       if (!e) throw new UserError('Ligne introuvable.');
-      await assertRentOpen(e.date);
+      const info = await rentPeriodInfo(e.date);
       await db.delete(rentEntries).where(eq(rentEntries.id, id));
-      await audit(me, 'LOCATION_DATE_SUPPRIMEE', { entity: 'location', entityId: id, details: { date: e.date, roomId: e.roomId, minutes: e.minutes, tarif: e.rate } });
+      await audit(me, 'LOCATION_DATE_SUPPRIMEE', { entity: 'location', entityId: id, details: { date: e.date, roomId: e.roomId, minutes: e.minutes, tarif: e.rate, moisRegle: info.settled } });
       refresh(['/admin/location']);
-      return { ok: true, message: `Journée du ${dateFr(e.date)} supprimée de l’état de location.` };
+      return { ok: true, message: `Journée du ${dateFr(e.date)} supprimée de l’état de location.${settledHint(info)}` };
     }
     const roomId = zs.id('Salle').parse(f.roomId);
     const date = zs.date('Date').parse(f.date);
-    await assertRentOpen(date);
+    const info = await rentPeriodInfo(date);
     const [already] = await db.select({ id: rentEntries.id }).from(rentEntries).where(and(eq(rentEntries.kind, 'EXCLUSION'), eq(rentEntries.roomId, roomId), eq(rentEntries.date, date)));
     if (!already) {
       const [row] = await db.insert(rentEntries).values({ kind: 'EXCLUSION', roomId, date, createdBy: me.id }).returning({ id: rentEntries.id });
-      await audit(me, 'LOCATION_DATE_RETIREE', { entity: 'location', entityId: row.id, details: { roomId, date, jour: dayOfWeek(date) } });
+      await audit(me, 'LOCATION_DATE_RETIREE', { entity: 'location', entityId: row.id, details: { roomId, date, jour: dayOfWeek(date), moisRegle: info.settled } });
     }
     refresh(['/admin/location']);
-    return { ok: true, message: `Journée du ${dateFr(date)} retirée de l’état de location (rétablissable).` };
+    return { ok: true, message: `Journée du ${dateFr(date)} retirée de l’état de location (rétablissable).${settledHint(info)}` };
   });
 }
 
@@ -286,11 +292,40 @@ export async function restoreRentLine(entryId: number): Promise<ActionResult> {
     const me = await assertRole('ADMIN');
     const [e] = await db.select().from(rentEntries).where(and(eq(rentEntries.id, entryId), eq(rentEntries.kind, 'EXCLUSION')));
     if (!e) throw new UserError('Journée introuvable.');
-    await assertRentOpen(e.date);
+    const info = await rentPeriodInfo(e.date);
     await db.delete(rentEntries).where(eq(rentEntries.id, entryId));
-    await audit(me, 'LOCATION_DATE_RETABLIE', { entity: 'location', entityId: entryId, details: { date: e.date, roomId: e.roomId } });
+    await audit(me, 'LOCATION_DATE_RETABLIE', { entity: 'location', entityId: entryId, details: { date: e.date, roomId: e.roomId, moisRegle: info.settled } });
     refresh(['/admin/location']);
-    return { ok: true, message: `Journée du ${dateFr(e.date)} rétablie dans l’état de location.` };
+    return { ok: true, message: `Journée du ${dateFr(e.date)} rétablie dans l’état de location.${settledHint(info)}` };
+  });
+}
+
+/**
+ * Mois déjà réglé dont l'état a augmenté après ajout de dates : enregistre le complément (nouvelle dépense datée du jour).
+ * Les dépenses passées ne sont jamais modifiées, l'état de caisse des périodes antérieures reste inchangé.
+ */
+export async function payRentComplement(period: string): Promise<ActionResult> {
+  return safe(async () => {
+    const me = await assertRole('ADMIN');
+    zs.period().parse(period);
+    const [settlement] = await db.select().from(rentSettlements).where(eq(rentSettlements.period, period));
+    if (!settlement) throw new UserError('Cette location n’est pas encore réglée : utilisez « Marquer comme réglé ».');
+    const { start, end } = periodBounds(period);
+    const [rep, paid] = await Promise.all([computeRentReport(start, end), rentPaid(period)]);
+    const diff = rep.total - paid.total;
+    if (diff <= 0) throw new UserError('Aucun complément à régler pour ce mois.');
+    const year = await getCurrentYear();
+    const s = await getSettings();
+    await db.transaction(async (tx) => {
+      await tx.insert(expenses).values({
+        academicYearId: year.id, date: todayISO(), category: 'LOCATION_SALLE', label: `Location des salles — complément ${periodLabel(period)}`,
+        amount: diff, method: 'ESPECES', beneficiary: s.identity.host, sourceType: 'LOCATION', sourceRef: period, createdBy: me.id,
+      });
+      await tx.update(rentSettlements).set({ amount: paid.total + diff }).where(eq(rentSettlements.id, settlement.id));
+    });
+    await audit(me, 'LOCATION_COMPLEMENT_PAYE', { details: { period, complement: diff, total: paid.total + diff } });
+    refresh(['/admin/location', '/admin/depenses']);
+    return { ok: true, message: `Complément de ${money(diff)} réglé pour ${periodLabel(period)} (total réglé : ${money(paid.total + diff)}).` };
   });
 }
 
